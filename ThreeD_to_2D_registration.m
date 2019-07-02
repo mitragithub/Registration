@@ -1,34 +1,27 @@
-function mouse_map_v24_weightepsilon(template_name, target_dir, config_file, output_dir)
-% map allen atlas to mouse slices
-%
-% clear all;
-% close all;
-% fclose all;
-% keyboard
-% if strcmp(target_dir,'/cis/home/dtward/Documents/intensity_transform_and_missing_data/csh_slices/Xu2Daniel/PMD1156/')
-%     keyboard
-% end
+function ThreeD_to_2D_registration(template_name, target_dir, config_file, output_dir, nonrigid_thick_only)
+% map 3D atlas to 2D slices
 tic
+% keyboard
 
-%
-% addpath /cis/home/dtward/Functions/plotting
-% addpath /cis/home/dtward/Functions/downsample
-% addpath /cis/home/dtward/Functions/vtk
-% addpath /cis/home/dtward/Functions/frame2Gif
+if nargin < 5
+    % for rnaseq,data, we want thick slices, >20um, to be nonrigidly
+    % registered.  Otherwise slices are transformed rigidly only
+    nonrigid_thick_only = 0;
+end
+thick_cutoff = 20;
 
 addpath Functions/plotting
 addpath Functions/downsample
 addpath Functions/vtk
 addpath Functions/frame2Gif
+addpath Functions/gradient
 
 
-% template_name = '/cis/home/dtward/Documents/ARA/Mouse_CCF/vtk/ara_nissl_50.vtk';
-
-
-% 711
-% target_dir = '/cis/home/dtward/Documents/intensity_transform_and_missing_data/csh_slices/toDaniel/MD711/';
-% initializer = '/cis/home/dtward/Documents/intensity_transform_and_missing_data/csh_slices/toDaniel/MD711/initializer_A.mat';
+% we will generally use an initializer for affine transformations
 initializer = [output_dir 'initializer_A.mat'];
+if ~exist(initializer,'file')
+    initializer = '';
+end
 
 
 
@@ -68,7 +61,7 @@ files = csv_data(:,1);
 nxJ0 = cellfun(@(x)str2num(x), csv_data(:,2:3));
 dxJ0 = cellfun(@(x)str2num(x), csv_data(:,5:6));
 zJ0 = cellfun(@(x)str2num(x), csv_data(:,10));
-isthicks = cellfun(@(x) str2num(x), csv_data(:,7)) > 20;
+isthicks = cellfun(@(x) str2num(x), csv_data(:,7)) > thick_cutoff;
 % for now don't worry about offset, I'll just calculate it to be the center
 
 
@@ -80,20 +73,12 @@ for downloop = 1 : 3
     
     if downloop == 1
         % now we're not doing cropping and not doing downsampling beforehand
-%         downI = 4;
-%         downJ = 4*3;
-%         blurI = 4/3;
-%         blurJ = 4*3/3;
         downI = str2double(config.DOWNLOOP1.downI);
         downJ = str2double(config.DOWNLOOP1.downJ);
         blurI = str2double(config.DOWNLOOP1.blurI);
         blurJ = str2double(config.DOWNLOOP1.blurJ);
     elseif downloop == 2
         % now down by 2
-%         downI = 2;
-%         downJ = 2*3;
-%         blurI = 2/3;
-%         blurJ = 2*3/3;
         downI = str2double(config.DOWNLOOP2.downI);
         downJ = str2double(config.DOWNLOOP2.downJ);
         blurI = str2double(config.DOWNLOOP2.blurI);
@@ -101,10 +86,6 @@ for downloop = 1 : 3
 
     elseif downloop == 3
         % now down by 1
-%         downI = 1;
-%         downJ = 1*3;
-%         blurI = 1/3;
-%         blurJ = 1*3/3;
         downI = str2double(config.DOWNLOOP3.downI);
         downJ = str2double(config.DOWNLOOP3.downJ);
         blurI = str2double(config.DOWNLOOP3.blurI);
@@ -235,21 +216,11 @@ for downloop = 1 : 3
     
     
     %%
-    % now we have to apply transformations
-    % the transformations will be
-    % phi - a deformation of atlas
-    % A - a rigid transformation of atlas
-    % then we have slicing
-    % then we have 2d rigid
-    % then 2d contrast mapping
+    % settings
     
     
     %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
     if downloop >= 1
-%         start_3d_diffeo = 500;
-%         start_2d_diffeo = 600;
-%         start_2d_affine = 50;
-%         niter = 1000;
         start_3d_diffeo = str2double(config.DOWNLOOP1.start_3d_diffeo);
         start_2d_diffeo = str2double(config.DOWNLOOP1.start_2d_diffeo);
         start_2d_affine = str2double(config.DOWNLOOP1.start_2d_affine);
@@ -263,11 +234,6 @@ for downloop = 1 : 3
         vfilename = '';
         prefix = [output_dir 'down4_'];
         
-%         sigmaR = 5e4;
-%         sigmaRJ = 1e3; % a bit smaller
-%         sigmaM = 0.05;
-%         sigmaB = sigmaM*2;
-%         sigmaA = sigmaM*10;
         sigmaR = str2double(config.DEFAULT.sigmaR);
         sigmaRJ = str2double(config.DEFAULT.sigmaRJ);
         sigmaM = str2double(config.DEFAULT.sigmaM);
@@ -275,10 +241,6 @@ for downloop = 1 : 3
         sigmaA = str2double(config.DEFAULT.sigmaA);
         
         
-%         piM_width = 3000;
-%         piM = 0.5;
-%         piB = 0.25;
-%         piA = 0.25;
         piM_width = str2double(config.DEFAULT.piM_width);
         piM = str2double(config.DEFAULT.piM);
         piB = str2double(config.DEFAULT.piB);
@@ -287,13 +249,6 @@ for downloop = 1 : 3
         
         
         % step sizes
-%         eVJ = 5e3; % this is reduced from before
-%         eVI = 2e6;
-%         eTI = 2e-6;
-%         eLI = 2e-13;
-%         eLJ = 2e-11;
-%         eTJ = 5e-4;
-%         post_affine_reduce = 0.1;
         eVJ = str2double(config.DOWNLOOP1.eVJ);
         eVI = str2double(config.DOWNLOOP1.eVI);
         eTI = str2double(config.DOWNLOOP1.eTI);
@@ -304,12 +259,6 @@ for downloop = 1 : 3
         
         
         % bounds
-%         VImax = dxI(1)*0.05;
-%         VJmax = dxJ(1)*0.05;
-%         LJmax = 0.005; % half a percent
-%         LImax = 0.005; % half a percent
-%         TJmax = dxJ(1)*0.5;
-%         TImax = dxI(1)*0.5;
         VImax_fac = str2double(config.DEFAULT.VImax_fac);
         VImax = VImax_fac*dxI(1);
         VJmax_fac = str2double(config.DEFAULT.VJmax_fac);
@@ -324,12 +273,6 @@ for downloop = 1 : 3
         
         
         % smoothness
-%         p = 2;
-%         a = dxI(1)/downI(1)*4*2; % this stays the same when voxel size changes
-%         pJ = p;
-%         aJ = a;
-%         ap = dxI(1)*5; % preconditioners change with voxel size
-%         aJp = dxJ(1)*5;
         p = str2double(config.DEFAULT.p);
         a = str2double(config.DEFAULT.a);
         pJ = str2double(config.DEFAULT.pJ);
@@ -341,14 +284,10 @@ for downloop = 1 : 3
 
         
         % flow
-%         nt = 5;
-%         ntJ = 2;
-
         nt = str2double(config.DEFAULT.nt);
         ntJ = str2double(config.DEFAULT.ntJ);
 
         % polynomial (order 4 is cubic)
-%         order = 4;
         order = str2double(config.DEFAULT.order);
         
         
@@ -361,16 +300,9 @@ for downloop = 1 : 3
         vfilename = [output_dir 'down4_v.mat'];
         prefix = [output_dir 'down2_'];
         
-%         eVJ = 2e3; % I reduced this one
-%         eVI = 1e6;
-%         post_affine_reduce = 0.05;
         eVJ = str2double(config.DOWNLOOP2.eVJ);
         eVI = str2double(config.DOWNLOOP2.eVI);
         post_affine_reduce = str2double(config.DOWNLOOP2.post_affine_reduce);
-%         start_3d_diffeo = 0;
-%         start_2d_diffeo = 0;
-%         start_2d_affine = 0;
-%         niter = 500;
         start_3d_diffeo = str2double(config.DOWNLOOP2.start_3d_diffeo);
         start_2d_diffeo = str2double(config.DOWNLOOP2.start_2d_diffeo);
         start_2d_affine = str2double(config.DOWNLOOP2.start_2d_affine);
@@ -380,9 +312,6 @@ for downloop = 1 : 3
     
     if downloop >= 3
         % now down 1
-%         eVJ = 1e3; % I'm making this smaller than last time, I'd like to make them smaller at every scale
-%         eVI = 5e5;
-%         post_affine_reduce = 0.01;
         eVI = str2double(config.DOWNLOOP2.eVI);
         eVJ = str2double(config.DOWNLOOP2.eVJ);
         post_affine_reduce = str2double(config.DOWNLOOP3.post_affine_reduce);
@@ -390,11 +319,6 @@ for downloop = 1 : 3
         prefix = [output_dir 'down1_'];
         Afilename = [output_dir 'down2_A.mat'];
         vfilename = [output_dir 'down2_v.mat'];
-        
-%         start_3d_diffeo = 0;
-%         start_2d_diffeo = 0;
-%         start_2d_affine = 0;
-%         niter = 100;
         
         start_3d_diffeo = str2double(config.DOWNLOOP3.start_3d_diffeo);
         start_2d_diffeo = str2double(config.DOWNLOOP3.start_2d_diffeo);
@@ -404,7 +328,7 @@ for downloop = 1 : 3
     end
     
     
-    
+    % hack if stepsizes are too big
     % % I want to reduce them all by 2 since twice as many slices in 787
     % eVJ = eVJ/2; % this is reduced from before
     % eVI = eVI/2;
@@ -427,8 +351,6 @@ for downloop = 1 : 3
     frameErrAll = [];
     frameWeightAll = [];
     frameIAll = [];
-    % upon profiling, it seems that expanding ERJ is using a lot of time, I
-    % suppose this is because there are lots of slices!
     ERJsave = zeros(length(files),niter);
     Esave = zeros(1,niter);
     EMsave = zeros(1,niter);
@@ -441,8 +363,7 @@ for downloop = 1 : 3
     % I want to define the length scales a in a way that does not depend on
     % downsampling
     % but
-    % I probably want some kind of conditioning in a way that does
-    % final initializations
+    % I want conditioning in a way that does
     % flow for atlas
     dt = 1.0/nt;
     vtx = zeros([nxI([2,1,3]),nt]);
@@ -454,12 +375,15 @@ for downloop = 1 : 3
     LLp = ( 1.0 - (ap)^2*2*( (cos(2.0*pi*FXI*dxI(1))-1.0)/dxI(1)^2 + (cos(2.0*pi*FYI*dxI(2))-1.0)/dxI(2)^2 + (cos(2.0*pi*FZI*dxI(3))-1.0)/dxI(3)^2  ) ).^(2*p);
     Kp = LL./LLp;
     
-    
     % 2d flow for target
     dtJ = 1.0/ntJ;
     for f = 1 : length(files)
         vJtx{f} = zeros([nxJ{f}([2,1]),ntJ]);
         vJty{f} = zeros([nxJ{f}([2,1]),ntJ]);
+        if nonrigid_thick_only && ~isthicks(f) % for non-thick slices no flow
+            vJtx{f} = zeros([nxJ{f}([2,1]),0]);
+            vJty{f} = zeros([nxJ{f}([2,1]),0]);
+        end
         fxJ = (0:nxJ{f}(1)-1)/nxJ{f}(1)/dxJ(1);
         fyJ = (0:nxJ{f}(2)-1)/nxJ{f}(2)/dxJ(2);
         [FXJ,FYJ] = meshgrid(fxJ,fyJ);
@@ -507,8 +431,7 @@ for downloop = 1 : 3
         
     end
     if ~isempty(vfilename)
-        % do not load the xI's
-%         load(vfilename,'vtx','vty','vtz', 'vJtx', 'vJty','xJ','yJ','zJ','xI','yI','zI')
+        % do not load the xI's because they have been redefined above
         load(vfilename,'vtx', 'vty', 'vtz', 'vJtx', 'vJty')
     end
     
@@ -529,7 +452,6 @@ for downloop = 1 : 3
             vtz(:,:,:,t) = tmp;
         end
     end
-%     keyboard
     % now go through every slice
     for i = 1 : length(files)
         if size(vJtx{i},3) > 0 && any(size(vJtx{i}(:,:,1)) < size(J{i}(:,:,1)))
@@ -615,6 +537,11 @@ for downloop = 1 : 3
         
         for f = 1 : length(files)
             %     parfor f = 1 : length(files) % haven't tried yet
+            
+            % nonrigid deformation on this slice
+            % if it is thick (always)
+            % or if you are not using the nonrigid_thick_only option
+            this_slice_nonrigid = (~nonrigid_thick_only || isthicks(f));            
             AJf = AJ(:,:,f);
             %%
             % now a diffeo in 2D
@@ -622,7 +549,7 @@ for downloop = 1 : 3
             phiJinvy = YJ{f};
             phiJAphiIt = zeros([size(XJ{f}),ntJ]);
             
-            for t = 1 : ntJ*(it>start_2d_diffeo)
+            for t = 1 : ntJ*(it>start_2d_diffeo)*this_slice_nonrigid
                 % sample the image at this point
                 % phiJ . A . phi . I
                 % or I(phi^{-1}(A^{-1}(phiJ^{-1}(x))))
@@ -862,7 +789,8 @@ for downloop = 1 : 3
             yJpad = [yJ{f}(1)-dxJ(2), yJ{f}, yJ{f}(end)+dxJ(2)];
             phiJ1tix = XJ{f};
             phiJ1tiy = YJ{f};
-            for t = ntJ*(it>start_2d_diffeo) : -1 : 1
+            detjacJ = ones(size(XJ{f}));
+            for t = ntJ*(it>start_2d_diffeo)*this_slice_nonrigid : -1 : 1
                 % update diffeo (note plus)
                 Xs = XJ{f} + vJtx{f}(:,:,t)*dtJ;
                 Ys = YJ{f} + vJty{f}(:,:,t)*dtJ;
