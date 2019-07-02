@@ -24,10 +24,16 @@ if nargin == 0
     seg_file = '/cis/home/dtward/Documents/ARA/Mouse_CCF/vtk/annotation_50.vtk';
     atlas_file = '/cis/home/dtward/Documents/ARA/Mouse_CCF/vtk/ara_nissl_50.vtk';
     input_dir = '/cis/home/dtward/Documents/intensity_transform_and_missing_data/csh_slices/toDaniel/MD710/';
-    detailed_output_dir = '710test_detailed/';
+    detailed_output_dir = '710_test_detailed/';
     output_dir = '710_test/';
+    config_file = 'rnaseq_config.ini';
+    
+    % ideally this step should be done before hand
+    create_location_csv_rnaseq(input_dir, 14.72, 14.72, 20, 200,[40,41,42,121:126,133:138,214:219])
     keyboard
 end
+
+
 
 %%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -43,12 +49,14 @@ close all;
 % step 2 is to run mapping
 warning('off','MATLAB:griddedInterpolant:MeshgridEval2DWarnId')
 warning('off','MATLAB:griddedInterpolant:MeshgridEval3DWarnId')
-ThreeD_to_2D_registration(atlas_file, input_dir, detailed_output_dir)
+nonrigid_thick_only = 1;
+ThreeD_to_2D_registration(atlas_file, input_dir, config_file, detailed_output_dir,nonrigid_thick_only)
 close all;
+% to do, only deform thick slices
 
 
 %%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % step 3 is to generate standard vtk outputs
-apply_deformation(seg_file, input_dir, detailed_output_dir, output_dir);
+apply_deformation({seg_file,atlas_file}, input_dir, detailed_output_dir, output_dir);
 close all;
