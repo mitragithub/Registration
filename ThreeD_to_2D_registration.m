@@ -917,9 +917,9 @@ for downloop = 1 : 3
                     showcount = 1;
                 end
                 danfigure(4554);
-                pos = get(4554,'position');
-                pos(3) = 960*2;
-                set(4554,'position',pos);
+%                 pos = get(4554,'position');
+%                 pos(3) = 960*2;
+%                 set(4554,'position',pos);
                 % show the target
                 subplotdan(4,ntoshow,showcount);
                 imagesc(xJ{f},yJ{f},J{f})
@@ -1031,7 +1031,6 @@ for downloop = 1 : 3
                     Zs_ = dA(3,1)*AiPhiJiAJiX + dA(3,2)*AiPhiJiAJiY + dA(3,3)*AiPhiJiAJiZ + dA(3,4);
                     %                 Os_ = dA(4,1)*AiPhiJiAJiX + dA(4,2)*AiPhiJiAJiY + dA(4,3)*AiPhiJiAJiZ + dA(4,4);
                     tmp = ferrW{f}.*(phiI_x_2d.*Xs_ + phiI_y_2d.*Ys_ + phiI_z_2d.*Zs_);
-                    %                 gradA(r,c) = gradA(r,c) + sum(sum(tmp))*prod(dxJ(1:2))*(-1)/sigmaM^2; % this doesn't work with parfor
                     gradA_f(r,c) = sum(sum(tmp))*prod(dxJ(1:2))*(-1)/sigmaM^2;
                 end
             end
@@ -1040,10 +1039,12 @@ for downloop = 1 : 3
             
             %%
             % now we need to find the contribution to the velocity gradient
-            % I think that what would be a good idea is to calculate the
-            % variation with respect to I1 = phiI
-            % then I know how to map this back
+            % from this slice
+            % calculate the variation with respect to I1 = phiI
+            % then I know how to map this back to I
+            %
             % d_de sum_i int |f([I1 + edI1](A^{-1}(AJi^{-1}(xi)))) - J(xi)|^2 dxi e=0
+            %
             % let's write the integral in a smarter way, and the 2d-3d in a
             % smarter way
             % I will do 2D 3D with delta functions, \Delta
@@ -1190,6 +1191,8 @@ for downloop = 1 : 3
             stepA(1:3,4) = stepA(1:3,4)/normTI*normTIsquash;
         end
         A = A*expm(-stepA);
+        
+        
         
         % now update deformation
         gradIpad = padarray(gradI,[1,1,1],0,'both');
