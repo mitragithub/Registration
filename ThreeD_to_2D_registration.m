@@ -1,7 +1,7 @@
 function ThreeD_to_2D_registration(template_name, target_dir, config_file, output_dir, nonrigid_thick_only)
 % map 3D atlas to 2D slices
 tic
-% keyboard
+
 
 if nargin < 5
     % for rnaseq,data, we want thick slices, >20um, to be nonrigidly
@@ -479,8 +479,11 @@ for downloop = 1 : 3
     normLIstepsave = zeros(1,niter);
     normTIsave = zeros(1,niter);
     normTIstepsave = zeros(1,niter);
+    
+    [I_x,I_y,I_z] = gradient3d(I,dxI(1),dxI(2),dxI(3),1);
+
     for it = 1 : niter
-        save_frames = it < 10 || ~mod(it-1,11);
+        save_frames = it < 10 || ~mod(it-1,11) || it == niter;
         
         %% first the deformation
         phiinvx = XI;
@@ -518,7 +521,22 @@ for downloop = 1 : 3
         % for later
         F = griddedInterpolant({yI,xI,zI},I,'linear','nearest');
         phiI = F(phiinvy,phiinvx,phiinvz);
-        [phiI_x,phiI_y,phiI_z] = gradient3d(phiI,dxI(1),dxI(2),dxI(3));
+%         [phiI_x,phiI_y,phiI_z] = gradient3d(phiI,dxI(1),dxI(2),dxI(3));
+        % note this may not be accurate if there are boundary issues
+        F = griddedInterpolant({yI,xI,zI},I_x,'linear','nearest');
+        phi_I_x = F(phiinvy,phiinvx,phiinvz);
+        F = griddedInterpolant({yI,xI,zI},I_y,'linear','nearest');
+        phi_I_y = F(phiinvy,phiinvx,phiinvz);
+        F = griddedInterpolant({yI,xI,zI},I_z,'linear','nearest');
+        phi_I_z = F(phiinvy,phiinvx,phiinvz);
+        [phiinvx_x, phiinvx_y, phiinvx_z] = gradient3d(phiinvx,dxI(1),dxI(2),dxI(3));
+        [phiinvy_x, phiinvy_y, phiinvy_z] = gradient3d(phiinvy,dxI(1),dxI(2),dxI(3));
+        [phiinvz_x, phiinvz_y, phiinvz_z] = gradient3d(phiinvz,dxI(1),dxI(2),dxI(3));
+        phiI_x = phi_I_x.*phiinvx_x + phi_I_y.*phiinvy_x + phi_I_z.*phiinvz_x;
+        phiI_y = phi_I_x.*phiinvx_y + phi_I_y.*phiinvy_y + phi_I_z.*phiinvz_y;
+        phiI_z = phi_I_x.*phiinvx_z + phi_I_y.*phiinvy_z + phi_I_z.*phiinvz_z;
+        
+        
         
         danfigure(333);
         sliceView(xI,yI,zI,phiI)
@@ -527,7 +545,8 @@ for downloop = 1 : 3
         % the sequence of transformations is
         % 1. phi
         % 2. A (3D pose)
-        % 3. AJ (slice specific)
+        % 3. phiJ (2d diffeo if applicable)
+        % 4. AJ (slice specific)
         % I want to save the norm of the gradients of each slice
         B = inv(A);
         
@@ -1012,7 +1031,7 @@ for downloop = 1 : 3
             % so we get
             % d_de sum_i int |I'(exp(-edA)A^{-1}(phiJ^{-1}(AJ^{-1}(x)))) - J(x)|^2 dx e=0
             % = sum_i int (I'(A^{-1}(phiJ^{-1}(AJ^{-1}(x)))) - J(x))^T DI'(A^{-1}(phiJ^{-1}(AJ^{-1}(x)))) (-1)dA A^{-1}(phiJ^{-1}(AJ^{-1}(x)))    dx
-            % this term has been calculated A^{-1}(phiJ^{-1}(AJ^{-1}(x)))
+            % this term has been calculated A^{-1}(phiJ^{-1}(AJ^{-1}(x))):
             % AiPhiJiAJiX, AiPhiJiAJiY, AiPhiJiAJiZ
             F = griddedInterpolant({yI,xI,zI},phiI_x,'linear','nearest');
             phiI_x_2d = F(AiPhiJiAJiY,AiPhiJiAJiX,AiPhiJiAJiZ);
@@ -1020,6 +1039,15 @@ for downloop = 1 : 3
             phiI_y_2d = F(AiPhiJiAJiY,AiPhiJiAJiX,AiPhiJiAJiZ);
             F = griddedInterpolant({yI,xI,zI},phiI_z,'linear','nearest');
             phiI_z_2d = F(AiPhiJiAJiY,AiPhiJiAJiX,AiPhiJiAJiZ);
+            % note that here there is a possible issue if the image crosses
+            % the boundary
+            % we end up with a lot of edge artifacts on these derivatives
+            % these edge artifacts may contribute to problems with the
+            % affine
+            % would there be a better way to do this using the derivative
+            % of the original image?
+            % DI' = D[I(phii(x))] = DI(phii(x))Dphii(x)
+            % I could do that above
             
             gradA_f = zeros(4);
             for r = 1 : 3
@@ -1029,7 +1057,7 @@ for downloop = 1 : 3
                     Xs_ = dA(1,1)*AiPhiJiAJiX + dA(1,2)*AiPhiJiAJiY + dA(1,3)*AiPhiJiAJiZ + dA(1,4);
                     Ys_ = dA(2,1)*AiPhiJiAJiX + dA(2,2)*AiPhiJiAJiY + dA(2,3)*AiPhiJiAJiZ + dA(2,4);
                     Zs_ = dA(3,1)*AiPhiJiAJiX + dA(3,2)*AiPhiJiAJiY + dA(3,3)*AiPhiJiAJiZ + dA(3,4);
-                    %                 Os_ = dA(4,1)*AiPhiJiAJiX + dA(4,2)*AiPhiJiAJiY + dA(4,3)*AiPhiJiAJiZ + dA(4,4);
+
                     tmp = ferrW{f}.*(phiI_x_2d.*Xs_ + phiI_y_2d.*Ys_ + phiI_z_2d.*Zs_);
                     gradA_f(r,c) = sum(sum(tmp))*prod(dxJ(1:2))*(-1)/sigmaM^2;
                 end
@@ -1089,7 +1117,6 @@ for downloop = 1 : 3
             % then its area is 1/2 2dz 1/dz = 1
             % okay
             
-            %         errpad = padarray(ferrW{f}/dxI(3),[1,1,1],0,'both'); % note
             %         divide by dz to get correct normalization, see note above
             % note padarray is ending up quite slow
             errpad = zeros(nxJ{f}(2)+2,nxJ{f}(1)+2,3);
@@ -1367,7 +1394,7 @@ for downloop = 1 : 3
         
         drawnow;
         
-        if ~mod(it-1,100)
+        if ~mod(it-1,100) 
             save([prefix 'v.mat'],'vtx','vty','vtz', 'vJtx', 'vJty','xJ','yJ','zJ','xI','yI','zI')
             save([prefix 'coeffs.mat'],'coeffs','CA','CB')
         end
@@ -1379,6 +1406,7 @@ for downloop = 1 : 3
     
     
     toc
+%     keyboard
     
     
 end % of downloop
