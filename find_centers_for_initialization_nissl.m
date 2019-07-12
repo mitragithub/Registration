@@ -1,6 +1,6 @@
 % find centers simple
 % initial slice alignment based on finding centers
-function find_centers_for_initialization_v01(target_dir,output_dir,down)
+function find_centers_for_initialization_nissl(target_dir,output_dir,down)
 % clear all;
 % close all;
 % fclose all;
