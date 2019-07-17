@@ -417,17 +417,20 @@ for f = 1 : length(files)
             % if the template is an allen annotation, we do it with
             % outlines
             
-            segalpha = 0.25;
-            F = griddedInterpolant({yI{t},xI{t},zI{t}},I{t},'nearest','nearest');
-            Seg = F(phiiAxyziPhiJiAJiY, phiiAxyziPhiJiAJiX, phiiAxyziPhiJiAJiZ);
-            [Seg_x,Seg_y] = gradient(Seg);
-            Seg_contour = Seg_x~=0 | Seg_y~=0;
-            % dilate it
-            Seg_contour_d = (convn(Seg_contour,ones(5),'same')~=0) - Seg_contour;
+%             segalpha = 0.25;
             
             
             danfigure(5);
             if ~isempty(strfind(template_names{t},'annotation'))
+                
+                F = griddedInterpolant({yI{t},xI{t},zI{t}},I{t},'nearest','nearest');
+                Seg = F(phiiAxyziPhiJiAJiY, phiiAxyziPhiJiAJiX, phiiAxyziPhiJiAJiZ);
+                [Seg_x,Seg_y] = gradient(Seg);
+                Seg_contour = Seg_x~=0 | Seg_y~=0;
+                % dilate it
+                Seg_contour_d = (convn(Seg_contour,ones(5),'same')~=0) - Seg_contour;
+
+                
                 %             SegInd = mod(Seg,256)+1;
                 %             SegRGB = cat(3,reshape(colors(SegInd,1),size(Seg)),...
                 %                 reshape(colors(SegInd,2),size(Seg)),...
@@ -444,6 +447,10 @@ for f = 1 : length(files)
                 imagesc(xJ{f},yJ{f},Jshow)
                 
             else
+                
+                F = griddedInterpolant({yI{t},xI{t},zI{t}},I{t},'linear','nearest');
+                Seg = F(phiiAxyziPhiJiAJiY, phiiAxyziPhiJiAJiX, phiiAxyziPhiJiAJiZ);
+                
                 
                 % otherwise, if not an annotation, we do the following
 %                 imagesc(xJ{f},yJ{f},bsxfun(@plus,Seg/max(Seg(:))*segalpha, Jrecon*(1-segalpha)))
@@ -466,7 +473,10 @@ for f = 1 : length(files)
                 clim = quantile(J2(:),qlim);
                 J2 = (J2 - clim(1))/diff(clim);
                 
-                imagesc(xJ{f},yJ{f},cat(3,J1,J2,J1))
+                COV = cov(J1(:),J2(:));
+                J2_ = (J2 - mean(J2(:)))/COV(2,2)*COV(1,2) + mean(J1(:));
+                
+                imagesc(xJ{f},yJ{f},cat(3,J1,J2_,J1))
                 
             end
             title(['z = ' num2str(zJ(f))])
