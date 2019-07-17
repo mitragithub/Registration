@@ -483,7 +483,7 @@ for f = 1 : length(files)
             axis image;
             xlabel x;
             ylabel y;
-            set(gca,'xlim',5000*[-1,1],'ylim',5000*[-1 1]);
+            set(gca,'xlim',6000*[-1,1],'ylim',5000*[-1 1]);
             [directory_, filename_, extension_] = fileparts(files{f});
             saveas(5,[outdir filename_ '_preview_' num2str(t) '_straight.png'])
         end
