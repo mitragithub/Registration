@@ -1,4 +1,4 @@
-function apply_deformation_v_0_12_nissl(template_names,target_dir,detailed_output_dir,outdir)
+function apply_deformation(template_names,target_dir,detailed_output_dir,outdir)
 % keyboard
 
 % clear all;
@@ -109,8 +109,6 @@ dt = 1.0/nt;
 
 vJtx = vvars.vJtx;
 vJty = vvars.vJty;
-ntJ = size(vJtx{1},3);
-dtJ = 1/ntJ;
 
 
 %%
@@ -183,6 +181,9 @@ for f = 1 : length(files)
     
     %%
     % now I have to flow the 2D transform
+    ntJ = size(vJtx{f},3);
+    dtJ = 1/ntJ;
+    
     phiJinvx = XVJ;
     phiJinvy = YVJ;
     for t = 1 : ntJ
