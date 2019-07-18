@@ -1,4 +1,4 @@
-function A = slice_to_slice_rigid_alignment(xI,yI,I,xJ,yJ,J,niter,eL,eT)
+function A = slice_to_slice_rigid_alignment(xI,yI,I,xJ,yJ,J,niter,eLfactor,eTfactor)
 % rigidly align two slices, possibly different modalities
 % we wish to align image I to image J rigidly
 % we use exponential parameterization
