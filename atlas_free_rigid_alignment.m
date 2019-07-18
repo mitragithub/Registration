@@ -1,4 +1,4 @@
-function atlas_free_rigid_alignment(target_dir,output_dir)
+function atlas_free_rigid_alignment(target_dir,pattern, output_dir, r, downs, niter, et_factor, etheta_factor)
 
 % atlas free slice alignment 
 % rigid alignment of a stack
@@ -8,13 +8,34 @@ function atlas_free_rigid_alignment(target_dir,output_dir)
 %
 % TODO, deal with slice spacing in physical units
 % keyboard
-
 addpath Functions/plotting
 addpath Functions/downsample
 
-% step sizes
-etheta_factor = 5e-11;
-et_factor = 5e-4;
+if nargin < 4
+    r = 25;
+end
+if nargin < 5
+    downs = [32,16,8,4];
+end
+if nargin < 8
+    niter = 200;
+end
+if nargin < 8
+    % step sizes
+    etheta_factor = 5e-11;
+    et_factor = 5e-4;
+    
+    % on july 17, half the step size and double the iters
+    etheta_factor = 2e-11;
+    et_factor = 2e-4;
+    etheta_factor = 1e-11;
+    et_factor = 1e-4;
+
+
+end
+
+
+
 
 
 
@@ -31,6 +52,10 @@ while 1
     line = fgetl(fid);
     if line == -1
         break
+    end
+    % check if it matches the pattern
+    if isempty(regexp(line,regexptranslate('wildcard',pattern)))
+        continue
     end
     count = count + 1;
     % process this line, splitting at commas
@@ -53,21 +78,20 @@ AJ = zeros(3,3,length(files));
 
 n = length(files);
 
-r = 25;
 
 % reconstruction params
 theta = zeros(1,n) ;
 tx = zeros(1,n);
 ty = zeros(1,n);
 
-downcount = 0;
-for down = [32,16,8]
-    downcount = downcount + 1;
-    if downcount == 1;
-        niter = 100;
-    else
-        niter = 50;
-    end
+Cost = zeros(1,10000);
+
+itercount = 0;
+
+
+for downcount = 1 : length(downs)
+    down = downs(downcount);
+    
     % step sizes
     % note about scaling
     % if I downsample by 2, we expect the changes to be dominated by edges
@@ -88,7 +112,8 @@ for down = [32,16,8]
         I_ = double(I_)/255.0;
         I_ = mean(I_,3);
         
-        val(i) = mode(I_(:));
+        % for padding
+        val(i) = mode(I_(I_(:)~=1));
         if isnan(val(i))
             val(i) = val(i-1); % entirely missing slice?
         end
@@ -172,7 +197,10 @@ for down = [32,16,8]
         % get the cost
         E = sum(AI_R(:).*I_R(:)/2*prod(dx(1:3)));
         disp(['Down ' num2str(down) ', it ' num2str(iter) ', E ' num2str(E) ])
-        
+        itercount = itercount + 1;
+        Cost(itercount) = E;
+        danfigure(33);
+        plot(Cost(1:itercount))
         
         % now calculate gradient on each slice
         thetagrad = zeros(size(theta));
@@ -218,3 +246,18 @@ if ~exist(output_dir,'dir')
 end
 save([output_dir 'initializer_A.mat'],'AJ');
 
+
+return
+keyboard
+
+
+%%
+
+for i = 1 : n
+    danfigure(44);
+    imagesc(I_R(:,:,i))
+    axis image
+    title(['slice ' num2str(i) ' of ' num2str(n)])
+    drawnow
+%     pause
+end
