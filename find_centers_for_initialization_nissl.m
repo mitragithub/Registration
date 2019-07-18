@@ -1,6 +1,6 @@
 % find centers simple
 % initial slice alignment based on finding centers
-function find_centers_for_initialization_nissl(target_dir,output_dir,down)
+function find_centers_for_initialization_nissl(target_dir, pattern, output_dir, down)
 % clear all;
 % close all;
 % fclose all;
@@ -10,7 +10,7 @@ function find_centers_for_initialization_nissl(target_dir,output_dir,down)
 % keyboard
 addpath Functions/plotting
 addpath Functions/downsample
-if nargin < 3
+if nargin < 4
     down = 3*4;
 end
 
@@ -32,6 +32,11 @@ while 1
     if line == -1
         break
     end
+    % check if it matches the pattern
+    if isempty(regexp(line,regexptranslate('wildcard',pattern)))
+        continue
+    end
+    
     count = count + 1;
     % process this line, splitting at commas
     csv_data(count,:) = strsplit(line,',');
