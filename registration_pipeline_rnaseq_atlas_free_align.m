@@ -24,18 +24,18 @@ if nargin == 0
     seg_file = '/cis/home/dtward/Documents/ARA/Mouse_CCF/vtk/annotation_50.vtk';
     atlas_file = '/cis/home/dtward/Documents/ARA/Mouse_CCF/vtk/ara_nissl_50.vtk';
     input_dir = '/cis/home/dtward/Documents/intensity_transform_and_missing_data/csh_slices/toDaniel/MD710/';
-    detailed_output_dir = '710_test_detailed/';
     output_dir = '710_test/';
     config_file = 'rnaseq_config.ini';
     
-    detailed_output_dir = '710_test2_detailed/';
     output_dir = '710_test2/';
 
     
     % ideally this step should be done before hand
-    create_location_csv_rnaseq(input_dir, 14.72, 14.72, 20, 200,[40,41,42,121:126,133:138,214:219])
+    pattern = '*.tif'
+    create_location_csv_rnaseq(input_dir, pattern, 14.72, 14.72, 20, 200,[40,41,42,121:126,133:138,214:219])
     keyboard
 end
+detailed_output_dir = [output_dir(1:end-1),'_detailed/'];
 
 
 
@@ -44,10 +44,12 @@ end
 % step 1 is to create an initial slice alignment
 % we use a simple initialization where we locate the center of mass of each
 % slice and align by translation
-% find_centers_for_initialization_nissl(input_dir, detailed_output_dir)
-atlas_free_rigid_alignment(input_dir, detailed_output_dir)
+pattern = '*.tif';
+r = 25;
+downs = [32,16,8];
+niter = 100;
+atlas_free_rigid_alignment(input_dir, pattern, detailed_output_dir, r, downs, niter)
 close all;
-
 
 %%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -55,7 +57,7 @@ close all;
 warning('off','MATLAB:griddedInterpolant:MeshgridEval2DWarnId')
 warning('off','MATLAB:griddedInterpolant:MeshgridEval3DWarnId')
 nonrigid_thick_only = 1;
-ThreeD_to_2D_registration(atlas_file, input_dir, config_file, detailed_output_dir,nonrigid_thick_only)
+ThreeD_to_2D_registration(atlas_file, input_dir, pattern, config_file, detailed_output_dir,nonrigid_thick_only)
 close all;
 
 
