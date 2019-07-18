@@ -1,9 +1,10 @@
-function ThreeD_to_2D_registration(template_name, target_dir, config_file, output_dir, nonrigid_thick_only)
+function ThreeD_to_2D_registration(template_name, target_dir, pattern, config_file, output_dir, nonrigid_thick_only)
 % map 3D atlas to 2D slices
+% only use files that match pattern (with wildcards)
 tic
 
 
-if nargin < 5
+if nargin < 6
     % for rnaseq,data, we want thick slices, >20um, to be nonrigidly
     % registered.  Otherwise slices are transformed rigidly only
     nonrigid_thick_only = 0;
@@ -51,6 +52,12 @@ while 1
     if line == -1
         break
     end
+    % check if it matches the pattern
+    if isempty(regexp(line,regexptranslate('wildcard',pattern)))
+        continue
+    end
+    
+    % check pattern
     count = count + 1;
     % process this line, splitting at commas
     csv_data(count,:) = strsplit(line,',');
