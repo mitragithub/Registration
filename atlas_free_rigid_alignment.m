@@ -17,7 +17,7 @@ end
 if nargin < 5
     downs = [32,16,8,4];
 end
-if nargin < 8
+if nargin < 6
     niter = 200;
 end
 if nargin < 8
