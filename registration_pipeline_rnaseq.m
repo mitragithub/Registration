@@ -36,10 +36,10 @@ if nargin == 0
     
 
     % ideally this step should be done before hand
-%     create_location_csv_rnaseq(input_dir, 14.72, 14.72, 20, 200,[40,41,42,121:126,133:138,214:219])
+    create_location_csv_rnaseq(input_dir, 14.72, 14.72, 20, 200,[40,41,42,121:126,133:138,214:219])
 
     output_dir = '711_test_01/'; % version 1 has updated slices
-    create_location_csv_rnaseq(input_dir, 14.72, 14.72, 20, 200,[40,41,42,121:126,133:138,214:219,229:234,277:282])
+%     create_location_csv_rnaseq(input_dir, 14.72, 14.72, 20, 200,[40,41,42,121:126,133:138,214:219,229:234,277:282])
     
 %     keyboard
 end
