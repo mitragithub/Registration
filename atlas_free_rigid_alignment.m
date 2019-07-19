@@ -239,7 +239,10 @@ for i = 1 : n
     B = [cos(theta(i)),-sin(theta(i)),tx(i);
         sin(theta(i)),cos(theta(i)),ty(i);
         0,0,1];
-    AJ(:,:,i) = inv(B);
+%     AJ(:,:,i) = inv(B);
+    
+    % above is wrong, below is correct
+    AJ(:,:,i) = B;
 end
 if ~exist(output_dir,'dir')
     mkdir(output_dir);

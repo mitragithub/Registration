@@ -1,7 +1,6 @@
-function create_location_csv(directory, dx, dy, thin_dz, thick_dz, thick_sections,outdir)
+function create_location_csv_rnaseq(directory, dx, dy, thin_dz, thick_dz, thick_sections, outdir)
 % because the sorting key may change, this should ONLY be used carefully
 % also this file hard codes 15 micron pixels
-
 if nargin < 7
     outdir = directory; % same input and output
 end

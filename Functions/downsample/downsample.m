@@ -73,17 +73,29 @@ else % general downsampling case
     zd = z(1:down(3):nxd(3)*down);
     
     Id = zeros(nxd(2),nxd(1),nxd(3));
+    xd = zeros(1,size(Id,2));
+    yd = zeros(1,size(Id,1));
+    zd = zeros(1,size(Id,3));
+
     for r = 1 : down(2)
         for c = 1 : down(1)
             for s = 1 : down(3)
                 Id = Id + I(r:down(2):nxd(2)*down(2), ...
                     c:down(1):nxd(1)*down(1), ...
                     s:down(3):nxd(3)*down(3));
-                
             end
         end
     end
     Id = Id/prod(down);
+    for r = 1 : down(2)
+        yd = yd + y(r:down(2):nxd(2)*down(2))/down(2);
+    end
+    for c = 1 : down(1)
+        xd = xd + x(c:down(1):nxd(1)*down(1))/down(1);
+    end
+    for s = 1 : down(3)
+        zd = zd + z(s:down(3):nxd(3)*down(3))/down(3);
+    end
     
     
     I = Id;
