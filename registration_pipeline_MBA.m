@@ -1,4 +1,4 @@
-function registration_pipeline_rnaseq_atlas_free_align(atlas_file,input_dir,detailed_output_dir,output_dir,seg_file)
+function registration_pipeline_MBA(atlas_file,input_dir,output_dir,seg_file)
 % run the rna seq mapping pipeline
 % 1. specify filename for vtk atlas
 % 2. specify directory for input images at 15 um
