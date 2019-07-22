@@ -1,4 +1,4 @@
-function atlas_free_rigid_alignment(target_dir,pattern, output_dir, r, downs, niter, et_factor, etheta_factor)
+function atlas_free_rigid_alignment(target_dir, pattern, output_dir, r, downs, niter, et_factor, etheta_factor, skip_thick, load_initializer)
 
 % atlas free slice alignment 
 % rigid alignment of a stack
@@ -7,7 +7,9 @@ function atlas_free_rigid_alignment(target_dir,pattern, output_dir, r, downs, ni
 % or as an initial guess atlas based slice alignment
 %
 % TODO, deal with slice spacing in physical units
-% keyboard
+% TODO, deal with slices left out
+% skip_thick is a number that we don't update if it is bigger than this
+
 addpath Functions/plotting
 addpath Functions/downsample
 
@@ -32,6 +34,13 @@ if nargin < 8
     et_factor = 1e-4;
 
 
+end
+
+if nargin < 9
+    skip_thick = -1;
+end
+if nargin < 10
+    load_initializer=0;
 end
 
 
@@ -67,8 +76,9 @@ files = csv_data(:,1);
 nxJ0 = cellfun(@(x)str2num(x), csv_data(:,2:3));
 dxJ0 = cellfun(@(x)str2num(x), csv_data(:,5:6));
 zJ0 = cellfun(@(x)str2num(x), csv_data(:,10));
+dz0 = cellfun(@(x)str2num(x), csv_data(:,7));
 
-AJ = zeros(3,3,length(files));
+
 
 
 
@@ -83,6 +93,22 @@ n = length(files);
 theta = zeros(1,n) ;
 tx = zeros(1,n);
 ty = zeros(1,n);
+
+% AJ is the transform from RECONSTRUCTED to OBSERVED
+% images deform with inverse, so we will use this to transform OBSERVED to
+% RECONSTRUCTED
+AJ = zeros(3,3,length(files));
+% instead of zero let's initialize it
+if exist([output_dir 'initializer_A.mat'],'file') && load_initializer
+    vars = load([output_dir 'initializer_A.mat']);
+    AJ = vars.AJ;
+
+    % get angle from x,y with correct sign
+    theta = squeeze(atan2(AJ(1,2,:),AJ(1,1,:)))';
+    tx = squeeze(AJ(1,3,:))';
+    ty = squeeze(AJ(2,3,:))';
+end
+
 
 Cost = zeros(1,10000);
 
@@ -112,12 +138,26 @@ for downcount = 1 : length(downs)
         I_ = double(I_)/255.0;
         I_ = mean(I_,3);
         
+        
+        
         % for padding
         val(i) = mode(I_(I_(:)~=1));
         if isnan(val(i))
             val(i) = val(i-1); % entirely missing slice?
         end
         I_(I_==1) = val(i);
+        
+        
+        % for thick images, just ignore them
+        if dz0(i) > skip_thick
+            if i > 1
+                I_ = ones(size(I_))*val(i-1);
+            else
+                I_ = zeros(size(I_));
+            end
+        end
+        
+        
         [~,~,I_] = downsample2D(1:size(I_,2),1:size(I_,1),I_,down*[1 1]);
         
         Iload{i} = I_;
@@ -207,6 +247,9 @@ for downcount = 1 : length(downs)
         txgrad = zeros(size(tx));
         tygrad = zeros(size(ty));
         for i = 1 : nx(3)
+            if dz0(i) > skip_thick
+                continue
+            end
             thetagrad(i) = sum(sum(AI_R(:,:,i) .* (I_x_R(:,:,i).*(-sin(theta(i))*XS - cos(theta(i))*YS) + I_y_R(:,:,i).*(cos(theta(i))*XS + -sin(theta(i))*YS)   ) )) * prod(dx(1:2));
             txgrad(i) = sum(sum(AI_R(:,:,i).*I_x_R(:,:,i)))*prod(dx(1:2));
             tygrad(i) = sum(sum(AI_R(:,:,i).*I_y_R(:,:,i)))*prod(dx(1:2));
@@ -220,6 +263,7 @@ for downcount = 1 : length(downs)
         ty = ty - mean(ty);
         theta = theta - mean(theta);
         
+%         disp(tx(14));disp(ty(14));disp(theta(14));
         
         
         drawnow;
@@ -235,14 +279,12 @@ for i = 1 : n
 %     Xs = cos(theta(i))*XS - sin(theta(i))*YS + tx(i);
 %     Ys = sin(theta(i))*XS + cos(theta(i))*YS + ty(i);
 %     F = griddedInterpolant({y,x},I(:,:,i),'linear','nearest');
-   % my AJ is the inverse of that
-    B = [cos(theta(i)),-sin(theta(i)),tx(i);
+
+    A = [cos(theta(i)),-sin(theta(i)),tx(i);
         sin(theta(i)),cos(theta(i)),ty(i);
         0,0,1];
-%     AJ(:,:,i) = inv(B);
-    
-    % above is wrong, below is correct
-    AJ(:,:,i) = B;
+
+    AJ(:,:,i) = A;
 end
 if ~exist(output_dir,'dir')
     mkdir(output_dir);

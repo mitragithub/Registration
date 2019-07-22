@@ -48,15 +48,30 @@ detailed_output_dir = [output_dir(1:end-1),'_detailed/'];
 % step 1 is to create an initial slice alignment
 % we use a simple initialization where we locate the center of mass of each
 % slice and align by translation
+% then we update with slice to slice alignment, exclude thick
+% then we will get an initial affine alignment
+
 pattern = '*.tif';
+find_centers_for_initialization_nissl(input_dir, pattern, detailed_output_dir); 
+
 r = 25;
-downs = [32,16,8];
-niter = 20; % 20 is not enough to converge but good for an initial guess
-atlas_free_rigid_alignment(input_dir, pattern, detailed_output_dir, r, downs, niter)
+% this downsampling and iterations is enough for a good initial guess
+% not enough for a full accurate reconstruction
+downs = [32,16];
+niter = 40;
+et_factor = 1e-4;
+etheta_factor = 1e-11;
+skip_thick = 25; % skip thick
+load_initializer = 1;
+atlas_free_rigid_alignment(input_dir, pattern, detailed_output_dir, r, downs, niter, et_factor, etheta_factor, skip_thick, load_initializer)
 close all;
 
 % initial affine
-affine_for_initial_alignment(atlas_file, input_dir, pattern, detailed_output_dir)
+downs = [8,4];
+niter = 30;
+et_factor = 2e-7;
+el_factor = 1e-14;
+affine_for_initial_alignment(atlas_file, input_dir, pattern, detailed_output_dir, downs, niter, et_factor, el_factor)
 close all;
 
 

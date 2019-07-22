@@ -1,4 +1,4 @@
-function affine_for_initial_alignment(atlas_file, input_dir, pattern, detailed_output_dir)
+function affine_for_initial_alignment(atlas_file, input_dir, pattern, detailed_output_dir, downs, niter, eT_factor, eL_factor)
 % load slices
 % construct 3D volume from initializer
 % do affine, and update initializer
@@ -10,14 +10,6 @@ addpath Functions/vtk
 % get the template
 [xI,yI,zI,I,title_,names] = read_vtk_image(atlas_file);
 I = double(I);
-dxI = [xI(2)-xI(1), yI(2)-yI(1), zI(2)-zI(1)];
-% scale it for numerical stability, since its scale doesn't matter
-Imean = mean(I(:));
-Istd = std(I(:));
-
-I = I - mean(I(:));
-I = I/std(I(:));
-
 
 
 % get the target data
@@ -54,10 +46,14 @@ AJ = vars.AJ;
 
 % initialize an image
 % and one for averaging
-
+if nargin < 5
 downs = [8,4];
+end
 mindown = min(downs);
-[xI,yI,zI,I] = downsample(xI,yI,zI,I,mindown*[1,1,1]);
+
+if nargin < 6
+    niter = 50;
+end
 
 %%
 % loop over files
@@ -137,7 +133,7 @@ danfigure(3)
 sliceView(xJ,yJ,zJ,Jnorm);
 %%
 close all
-niter = 10;
+
 A = eye(4);
 % permute xy, and flip z
 % this is only valid for Allen vtk atlas
@@ -145,7 +141,37 @@ A = [0,1,0,0;
     1,0,0,0;
     0,0,-1,0;
     0,0,0,1]*A;
-eTfactor = 5e-7;
-eLfactor = 2e-14;
-A = ThreeD_to_3D_affine_registration(xI,yI,zI,I,xJ,yJ,zJ,Jnorm,A,downs/mindown,niter,eLfactor,eTfactor);
+if nargin < 7
+    eT_factor = 2e-7;
+end
+if nargin < 8
+    eL_factor = 1e-14;
+end
+
+
+
+
+[xI,yI,zI,I] = downsample(xI,yI,zI,I,mindown*[1,1,1]);
+
+% preprocess I, I want to pad it for example
+dxI = [xI(2)-xI(1), yI(2)-yI(1), zI(2)-zI(1)];
+
+
+I = padarray(I,[1,1,1],'both'); % zero pad
+xI = [xI(1)-dxI(1), xI, xI(end)+dxI(1)];
+yI = [yI(1)-dxI(2), yI, yI(end)+dxI(2)];
+zI = [zI(1)-dxI(3), zI, zI(end)+dxI(3)];
+
+
+
+% scale it for numerical stability, since its scale doesn't matter
+Imean = mean(I(:));
+Istd = std(I(:));
+
+I = I - mean(I(:));
+I = I/std(I(:));
+
+
+
+A = ThreeD_to_3D_affine_registration(xI,yI,zI,I,xJ,yJ,zJ,Jnorm,A,downs/mindown,niter,eT_factor,eL_factor);
 save([detailed_output_dir 'initializer_A.mat'],'AJ','A');

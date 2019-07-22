@@ -56,6 +56,7 @@ isthicks = cellfun(@(x) str2num(x), csv_data(:,7)) > 20;
 AJ = zeros(3,3,length(files));
 % load and downsample
 for i = 1 : length(files)
+%     if i == 14;keyboard;end
     disp(['downsampling ' num2str(i) ' of ' num2str(length(files))])
     I_ = imread([target_dir files{i}]);
     W_ = double(~(I_(:,:,1) == 255 & I_(:,:,2) == 255 & I_(:,:,3) == 255));
