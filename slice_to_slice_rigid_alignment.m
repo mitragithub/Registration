@@ -49,6 +49,8 @@ CI = size(I,3);
 CJ = size(J,3);
 
 [XJ,YJ] = meshgrid(xJ,yJ);
+dxI = [xI(2) - xI(1), yI(2) - yI(1)];
+dxJ = [xJ(2) - xJ(1), yJ(2) - yJ(1)];
 
 if nargin < 7
     niter = 100;
