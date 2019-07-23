@@ -10,6 +10,7 @@ function atlas_free_rigid_alignment(target_dir, pattern, output_dir, r, downs, n
 % TODO, deal with slices left out
 % skip_thick is a number that we don't update if it is bigger than this
 
+
 addpath Functions/plotting
 addpath Functions/downsample
 
@@ -149,7 +150,7 @@ for downcount = 1 : length(downs)
         
         
         % for thick images, just ignore them
-        if dz0(i) > skip_thick
+        if dz0(i) > skip_thick && skip_thick > 0
             if i > 1
                 I_ = ones(size(I_))*val(i-1);
             else
