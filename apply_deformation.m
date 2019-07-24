@@ -86,10 +86,17 @@ end
 
 %%
 % get the transforms
+% note that when working with 2 slice types, we'll have to load the
+% combined transforms
+if exist([detailed_output_dir 'combined_A.mat'])
+Avars = load([detailed_output_dir 'combined_A.mat']);
+vvars = load([detailed_output_dir 'combined_v.mat']);    
+else
 Avars = load([detailed_output_dir 'down1_A.mat']);
+vvars = load([detailed_output_dir 'down1_v.mat']);
+end
 A = Avars.A;
 AJ = Avars.AJ;
-vvars = load([detailed_output_dir 'down1_v.mat']);
 dxVJ = zeros(length(files),2);
 for f = 1 : length(files)
     dxVJ(f,:) = [vvars.xJ{f}(2)-vvars.xJ{f}(1),vvars.yJ{f}(2)-vvars.yJ{f}(1)];
