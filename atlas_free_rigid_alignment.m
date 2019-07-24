@@ -10,6 +10,7 @@ function atlas_free_rigid_alignment(target_dir, pattern, output_dir, r, downs, n
 % TODO, deal with slices left out
 % skip_thick is a number that we don't update if it is bigger than this
 
+% keyboard
 
 addpath Functions/plotting
 addpath Functions/downsample
@@ -106,6 +107,7 @@ if exist([output_dir 'initializer_A.mat'],'file') && load_initializer
 
     % get angle from x,y with correct sign
     theta = squeeze(atan2(AJ(1,2,:),AJ(1,1,:)))';
+    
     tx = squeeze(AJ(1,3,:))';
     ty = squeeze(AJ(2,3,:))';
 end
@@ -248,7 +250,7 @@ for downcount = 1 : length(downs)
         txgrad = zeros(size(tx));
         tygrad = zeros(size(ty));
         for i = 1 : nx(3)
-            if dz0(i) > skip_thick
+            if dz0(i) > skip_thick && skip_thick>0
                 continue
             end
             thetagrad(i) = sum(sum(AI_R(:,:,i) .* (I_x_R(:,:,i).*(-sin(theta(i))*XS - cos(theta(i))*YS) + I_y_R(:,:,i).*(cos(theta(i))*XS + -sin(theta(i))*YS)   ) )) * prod(dx(1:2));
