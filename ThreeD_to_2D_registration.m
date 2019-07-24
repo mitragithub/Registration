@@ -963,7 +963,7 @@ for downloop = 1 : 3
                 axis off;
                 % now the weight
                 subplotdan(4,ntoshow,showcount+ntoshow*3);
-                imagesc(xJ{f},yJ{f},cat(3,WM{f},WA{f},WB{f}));
+                imagesc(xJ{f},yJ{f},cat(3,WM{f}.*WMask{f},WA{f}.*WMask{f},WB{f}.*WMask{f}));
                 axis image
                 axis off;
                 
@@ -1010,10 +1010,10 @@ for downloop = 1 : 3
                 danfigure(4560);
                 if it == 1
                     subplotdan(ceil(sqrt(length(files))),ceil(sqrt(length(files))),f);
-                    hWeightAll(f) = imagesc(xJ{f},yJ{f},cat(3,WM{f},WA{f},WB{f}));
+                    hWeightAll(f) = imagesc(xJ{f},yJ{f},cat(3,WM{f}.*WMask{f},WA{f}.*WMask{f},WB{f}.*WMask{f}));
                     axis image off;
                 else
-                    set(hWeightAll(f),'cdata',cat(3,WM{f},WA{f},WB{f}))
+                    set(hWeightAll(f),'cdata',cat(3,WM{f}.*WMask{f},WA{f}.*WMask{f},WB{f}.*WMask{f}))
                 end
             end
             
