@@ -45,22 +45,49 @@ detailed_output_dir = [output_dir(1:end-1),'_detailed/'];
 % we use a simple initialization where we locate the center of mass of each
 % slice and align by translation
 pattern = '*-N*.tif';
-% r = 25;
-% downs = [32,16,8];
-% niter = 100;
-% atlas_free_rigid_alignment(input_dir, pattern, detailed_output_dir, r, downs, niter)
-find_centers_for_initialization_nissl(input_dir, pattern, detailed_output_dir)
+find_centers_for_initialization_nissl(input_dir, pattern, detailed_output_dir);
+close all;
 
+r = 25;
+% this downsampling and iterations is enough for a good initial guess
+% not enough for a full accurate reconstruction
+downs = [32,16];
+niter = 40;
+et_factor = 1e-4;
+etheta_factor = 1e-11;
+skip_thick = -1; % no thick slices to be skipped
+load_initializer = 1;
+atlas_free_rigid_alignment(input_dir, pattern, detailed_output_dir, r, downs, niter, et_factor, etheta_factor, skip_thick, load_initializer)
+close all;
+
+% initial affine
+downs = [8,4];
+niter = 30;
+et_factor = 2e-7;
+el_factor = 1e-14;
+affine_for_initial_alignment(atlas_file, input_dir, pattern, detailed_output_dir, downs, niter, et_factor, el_factor)
 close all;
 
 
 %%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % step 2 is to run mapping
+
+% let's start by matching each fluoro slice to its nearest nissl slice
+nissl_pattern = pattern;
+fluoro_pattern = '*-F*.tif';
+align_fluoro_to_nissl(input_dir, nissl_pattern, fluoro_pattern, detailed_output_dir);
+
+
+
+% now 3D to 2D transformations for nissl
 warning('off','MATLAB:griddedInterpolant:MeshgridEval2DWarnId')
 warning('off','MATLAB:griddedInterpolant:MeshgridEval3DWarnId')
 ThreeD_to_2D_registration(atlas_file, input_dir, pattern, config_file, detailed_output_dir)
 close all;
+
+% interleave these two transformations in appropriate format
+combine_nissl_and_fluoro_transforms(detailed_output_dir)
 
 
 %%
