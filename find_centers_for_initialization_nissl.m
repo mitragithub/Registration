@@ -15,6 +15,7 @@ if nargin < 4
 end
 
 
+
 %%
 % target_dir = '/cis/home/dtward/Documents/intensity_transform_and_missing_data/csh_slices/toDaniel/MD710/';
 % target_dir = '/cis/home/dtward/Documents/intensity_transform_and_missing_data/csh_slices/toDaniel/MD705/';
@@ -96,7 +97,11 @@ for i = 1 : length(files)
     % we want to find the center of mass in some sense
     for c = 1 : 3
         %         themax(c) = max(max(I(:,:,c).*(W==1)));
-        tmp = I(:,:,c).*(W==1);
+%         tmp = I(:,:,c).*(W==1);
+        
+        % in some examples there are a lot of pixels that are exactly equal
+        % to 1, the above leads to nans        
+        tmp = I(:,:,c).*(W>0.5);
 %         themax(c) = max(tmp(:));
         themax(c) = quantile(tmp(:),0.95);
     end
@@ -113,6 +118,12 @@ for i = 1 : length(files)
     scatter(Ix,Iy,100,'f','k');
     hold off;
     drawnow
+    
+    if isnan(Ix) || isnan(Iy)
+        warning(['nan detected on slice ' num2str(i) ' of ' num2str(length(files))]);
+        keyboard
+    end
+
     
     AJ(:,:,i) = eye(3);
     AJ(1:2,3,i) = [Ix,Iy];
