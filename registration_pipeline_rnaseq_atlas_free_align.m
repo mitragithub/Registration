@@ -35,7 +35,14 @@ if nargin == 0
     
     input_dir = '/cis/home/dtward/Documents/intensity_transform_and_missing_data/csh_slices/toDaniel/MD705/';
     output_dir = '705_test0/';
-    create_location_csv_rnaseq(input_dir, 14.72, 14.72, 20, 250,[17,107,425])
+%     create_location_csv_rnaseq(input_dir, 14.72, 14.72, 20, 250,[17,107,425])
+
+    input_dir = '/cis/home/dtward/Documents/intensity_transform_and_missing_data/csh_slices/718/';
+    output_dir = '718_test0/';
+    
+    input_dir = '/cis/home/dtward/Documents/intensity_transform_and_missing_data/csh_slices/719/';
+    output_dir = '719_test0/';
+
 
     keyboard
 end
