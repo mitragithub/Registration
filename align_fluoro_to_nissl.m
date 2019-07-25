@@ -78,6 +78,9 @@ for i = 1 : length(zJ0)
     I_ = max(I_(:)) - I_;
     I_ = I_/sum(I_(:));
     comI = [sum(I_(:).*XI(:)),sum(I_(:).*YI(:))];
+    if any(isnan(comI))
+        comI = [0,0];
+    end
     
     % J is light on dark
     if strcmp(fluoro_pattern, '*-F*.tif')
@@ -91,6 +94,9 @@ for i = 1 : length(zJ0)
     end
     J_ = J_/sum(J_(:));
     comJ = [sum(J_(:).*XJ(:)),sum(J_(:).*YJ(:))];
+    if any(isnan(comJ))
+        comJ = [0,0];
+    end
     A0(1:2,end) = comJ - comI;
     % my com calcs are not very robust
     % look at some images with artifacts and you'll see
@@ -121,7 +127,12 @@ for i = 1 : length(zJ0)
 %     NtoF(:,:,i) = slice_to_slice_rigid_alignment(xI,yI,I,xJ,yJ,J,A0,downs,niter,eTfactor,eLfactor);
     % this gauss newton version is much more numerically stable
     niter = 100;
-    NtoF(:,:,i) = slice_to_slice_rigid_alignment_GN(xI,yI,I,xJ,yJ,J,A0,downs,niter);
+    try
+        NtoF(:,:,i) = slice_to_slice_rigid_alignment_GN(xI,yI,I,xJ,yJ,J,A0,downs,niter);
+    catch
+        warning(['Could not calculate slice nissl to fluoro alignment for slice ' num2str(i)]);
+        keyboard
+    end
 end
 
 %%

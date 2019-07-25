@@ -38,6 +38,8 @@ if nargin == 0
     order = 2;
     keyboard
 end
+
+
 addpath Functions/plotting
 addpath Functions/gradient
 addpath Functions/downsample
@@ -122,9 +124,14 @@ for downloop = 1 : length(downs)
         % start with just linear
         D = cat(3,ones(size(AId,1),size(AId,2)),AId);
         Dvec = reshape(D,[],size(D,3));
-        if it == 1
+        coeffs = (Dvec'*Dvec) \ (Dvec' * reshape(Jd,[],CJ));
+
+        if any(isnan(coeffs))
+            D = cat(3,ones(size(AId,1),size(AId,2)));
+            Dvec = reshape(D,[],size(D,3));
             coeffs = (Dvec'*Dvec) \ (Dvec' * reshape(Jd,[],CJ));
         end
+        
         fAId = reshape(Dvec*coeffs,size(Jd));
         
         
@@ -190,6 +197,9 @@ for downloop = 1 : length(downs)
         % update
         step = JerrJerr \ squeeze(sum(sum(sum(bsxfun(@times, Jerr, err),3),2),1));
         step = reshape(step,3,2)';
+        if any(isnan(step))
+            step = zeros(size(step));
+        end
         Ai(1:2,1:3) = Ai(1:2,1:3) - e * step;
         
         % make it rigid
