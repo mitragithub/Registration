@@ -78,14 +78,20 @@ for i = 1 : length(zJ0)
     I_ = max(I_(:)) - I_;
     I_ = I_/sum(I_(:));
     comI = [sum(I_(:).*XI(:)),sum(I_(:).*YI(:))];
+    
     % J is light on dark
-    [XJ,YJ] = meshgrid(xJ,yJ);
-    J_ = max(J,[],3);
-    J_ = J_ - min(J_(:));
+    if strcmp(fluoro_pattern, '*-F*.tif')
+        [XJ,YJ] = meshgrid(xJ,yJ);
+        J_ = max(J,[],3);
+        J_ = J_ - min(J_(:));
+    elseif strcmp(fluoro_pattern, '*-IHC*.tif') % dark on light
+        [XJ,YJ] = meshgrid(xJ,yJ);
+        J_ = min(J,[],3);
+        J_ = max(J_(:)) - J_;
+    end
     J_ = J_/sum(J_(:));
     comJ = [sum(J_(:).*XJ(:)),sum(J_(:).*YJ(:))];
     A0(1:2,end) = comJ - comI;
-    
     % my com calcs are not very robust
     % look at some images with artifacts and you'll see
     

@@ -1,11 +1,21 @@
-function A = ThreeD_to_3D_affine_registration(xI,yI,zI,I,xJ,yJ,zJ,J,A0,downs,niter,eTfactor,eLfactor)
+function A = ThreeD_to_3D_affine_registration_GN(xI,yI,zI,I,xJ,yJ,zJ,J,A0,downs,niter,e)
 % this function will register two volumes based on affine
 % the idea is to construct a volume from the aligned slices and do an
 % initial affine map onto it
 %
 % affine registration between I and J
 % run at several different stages of downsampling
-
+%
+% Now using Gauss newton optimization which is much more robust than
+% gradient descent
+%
+% we will consider vector perturbations, not group
+% and we will optimize over Ai (inverse)
+% d_de 1/2 int (I(Aix + edAix) - J(x))^2 dx |_{e=0}
+% = int (I(Ai x) - J(x)) DI(Ai x) dAi x dx
+% = int (I(Ai x) - J(x)) D[I(Ai x)] A dAi x dx
+% this factors into 
+%
 % keyboard
 addpath Functions/downsample
 addpath Functions/plotting
@@ -26,22 +36,19 @@ if nargin == 0
     
     downs = [4,2];
     niter = 10;
-    
-    eLfactor = 2e-5;
-    eTfactor = 5e-4;
-end
-if length(niter) == 1
-    niter = ones(size(downs))*niter;
+    e = 0.1;
 end
 if nargin < 9
     A0 = eye(4);
 end
 if nargin < 12
-    eTfactor = 5e-4;
+    e = 0.5;
 end
-if nargin < 13
-    eLfactor = 2e-5;
+if length(niter) == 1
+    niter = ones(size(downs))*niter;
 end
+
+
 I = (I - mean(I(:))) / std(I(:));
 J = (J - mean(J(:))) / std(J(:));
 
@@ -59,10 +66,11 @@ zJ0 = zJ;
 
 % initialize
 A = A0;
-E = zeros(1,sum(niter));
-itercount = 0;
+Ai = inv(A);
 
+E = zeros(1,sum(niter));
 % loop over downsamples
+itercount = 0;
 for downloop = 1 : length(downs)
     down = downs(downloop);
     
@@ -83,13 +91,12 @@ for downloop = 1 : length(downs)
     
     % start gradient descent loop
     
-    for it = 1 : niter(downloop)
+    for it = 1 : niter
         itercount = itercount + 1;
         % transform I
-        B = inv(A);
-        Xs = B(1,1)*XJ + B(1,2)*YJ + B(1,3)*ZJ + B(1,4);
-        Ys = B(2,1)*XJ + B(2,2)*YJ + B(2,3)*ZJ + B(2,4);
-        Zs = B(3,1)*XJ + B(3,2)*YJ + B(3,3)*ZJ + B(3,4);
+        Xs = Ai(1,1)*XJ + Ai(1,2)*YJ + Ai(1,3)*ZJ + Ai(1,4);
+        Ys = Ai(2,1)*XJ + Ai(2,2)*YJ + Ai(2,3)*ZJ + Ai(2,4);
+        Zs = Ai(3,1)*XJ + Ai(3,2)*YJ + Ai(3,3)*ZJ + Ai(3,4);
         F = griddedInterpolant({yI,xI,zI},I,'linear','nearest');
         AI = F(Ys,Xs,Zs);
         danfigure(3);
@@ -107,9 +114,8 @@ for downloop = 1 : length(downs)
         % cost
         E(itercount) = sum(abs(err(:)).^2)/2*prod(dxJ);
         danfigure(5);
-        plot(E(1:itercount));
+        plot(E(1:itercount))
         disp(['Down loop ' num2str(downloop) ', iteration '  num2str(it) ', energy ' num2str(E(itercount))])
-        
         
         % now we take gradient
         % to do this use right perturbation
@@ -119,30 +125,30 @@ for downloop = 1 : length(downs)
         % = int (I(Ai x) - J(x)) D[I (Ai x)] A (-1) dA Ai x dx
         
         [fAI_x,fAI_y,fAI_z] = gradient3d(fAI,dxJ(1),dxJ(2),dxJ(3));
-        gradA = zeros(4,4);
-        for r = 1 : 4
+        
+        Jerr = zeros(size(J,1),size(J,2),size(J,3),12);
+        count = 0;
+        for r = 1 : 3
             for c = 1 : 4
-                dA = ((1:4)==r)' * (1:4)==c;
-                M = A * dA /A;
-                Xs = M(1,1)*XJ + M(1,2)*YJ + M(1,3)*ZJ + M(1,4);
-                Ys = M(2,1)*XJ + M(2,2)*YJ + M(2,3)*ZJ + M(2,4);
-                Zs = M(3,1)*XJ + M(3,2)*YJ + M(3,3)*ZJ + M(3,4);
-                gradA(r,c) =   (-1)*sum(err(:) .* (fAI_x(:).*Xs(:) + fAI_y(:).*Ys(:) + fAI_z(:).*Zs(:)))*prod(dxJ);
+                dA = double((1:4==r))' * double((1:4==c));
+                AdAAi = A*dA;
+                Xs = AdAAi(1,1)*XJ + AdAAi(1,2)*YJ + AdAAi(1,3)*ZJ + AdAAi(1,4);
+                Ys = AdAAi(2,1)*XJ + AdAAi(2,2)*YJ + AdAAi(2,3)*ZJ + AdAAi(2,4);
+                Zs = AdAAi(3,1)*XJ + AdAAi(3,2)*YJ + AdAAi(3,3)*ZJ + AdAAi(3,4);
+                count = count + 1;
+                Jerr(:,:,:,count) = (bsxfun(@times, fAI_x,Xs) + bsxfun(@times, fAI_y,Ys) + bsxfun(@times, fAI_z,Zs));
             end
         end
+        JerrJerr = squeeze(sum(sum(sum(bsxfun(@times, permute(Jerr,[1,2,3,4,5]) , permute(Jerr,[1,2,3,5,4])),3),2),1));
         
-        % stepsize
-        EP = [1,1,1,0;
-            1,1,1,0;
-            1,1,1,0;
-            0,0,0,0] * down * eLfactor ...
-            + ...
-            [0,0,0,1;
-            0,0,0,1;
-            0,0,0,1;
-            0,0,0,0] * down * eTfactor;
+        % step
+        step = JerrJerr \ squeeze(sum(sum(sum(bsxfun(@times, Jerr, err),3),2),1));
+        step = reshape(step,4,3)';
+        Ai(1:3,1:4) = Ai(1:3,1:4) - e * step;
+        A = inv(Ai);
         
-        A = A*expm(-EP.*gradA);
+        
+
         drawnow;
         
     end % end of gradient descent iteration loop it
@@ -152,3 +158,4 @@ for downloop = 1 : length(downs)
     
 end % of downsampling loop (downloop)
 
+A = inv(Ai);

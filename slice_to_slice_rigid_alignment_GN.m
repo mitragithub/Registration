@@ -17,7 +17,8 @@ function A = slice_to_slice_rigid_alignment_GN(xI,yI,I,xJ,yJ,J,A0,downs,niter,e)
 % we will optimize over the matrix B=Ai for simplicity
 % we will not use group perturbation, instead, just project onto rigid
 % d_ee int 1/2 |I'(B x + edB x) - J(x))|^2 dx |_e=0
-% = int (I'(Bx) - J(x)) DI'(Bx) B dx
+% = int (I'(Bx) - J(x)) DI'(Bx) dB x dx
+% = int (I'(Bx) - J(x)) D[I'(Bx)] Bi dB x dx
 % 
 if nargin == 0
     % run an example
@@ -72,7 +73,7 @@ if length(niter) == 1
     niter = repmat(niter,length(downs));
 end
 if nargin < 10
-    e = 0.1;
+    e = 0.5;
 end
 %%
 A = A0;
@@ -176,7 +177,7 @@ for downloop = 1 : length(downs)
         for r = 1 : 2
             for c = 1 : 3
                 dA = double((1:3==r))' * double((1:3==c));
-                AdAAi = A*dA/A;
+                AdAAi = A*dA;
                 Xs = AdAAi(1,1)*XJd + AdAAi(1,2)*YJd + AdAAi(1,3);
                 Ys = AdAAi(2,1)*XJd + AdAAi(2,2)*YJd + AdAAi(2,3);
                 count = count + 1;
@@ -195,7 +196,6 @@ for downloop = 1 : length(downs)
         [U,S,V] = svd(Ai(1:2,1:2));
         Ai(1:2,1:2) = U*V';
         A = inv(Ai);
-        
         
         drawnow
         

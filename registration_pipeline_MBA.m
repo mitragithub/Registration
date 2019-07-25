@@ -29,6 +29,9 @@ if nargin == 0
     input_dir = '/cis/home/dtward/Documents/intensity_transform_and_missing_data/csh_slices/Xu2Daniel/PMD1238/';
     output_dir = 'PMD1238_test_00/';
 
+    input_dir = '/cis/home/dtward/Documents/intensity_transform_and_missing_data/csh_slices/Xu2Daniel/PMD1156/';
+    output_dir = 'PMD1156_test_00/';
+
     
     
     % ideally this step should be done before hand
@@ -63,21 +66,29 @@ close all;
 % initial affine
 downs = [8,4];
 niter = 30;
-et_factor = 2e-7;
-el_factor = 1e-14;
-affine_for_initial_alignment(atlas_file, input_dir, pattern, detailed_output_dir, downs, niter, et_factor, el_factor)
+% et_factor = 2e-7;
+% el_factor = 1e-14;
+affine_for_initial_alignment(atlas_file, input_dir, pattern, detailed_output_dir, downs, niter)
 close all;
 
 
 %%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % step 2 is to run mapping
-
 % let's start by matching each fluoro slice to its nearest nissl slice
+% note that this is named fluoro, but it supports fluoro or ihc
 nissl_pattern = pattern;
-fluoro_pattern = '*-F*.tif';
+files = dir([input_dir '*.tif']);
+files = {files.name};
+for f = 1 : length(files)
+    if strfind(files{f}, '-F')
+        fluoro_pattern = '*-F*.tif';
+    elseif strfind(files{f},'-IHC')
+        fluoro_pattern = '*-IHC*.tif';
+    end
+end
 align_fluoro_to_nissl(input_dir, nissl_pattern, fluoro_pattern, detailed_output_dir);
-
+close all;
 
 
 % now 3D to 2D transformations for nissl

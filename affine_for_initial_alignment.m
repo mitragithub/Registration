@@ -1,4 +1,4 @@
-function affine_for_initial_alignment(atlas_file, input_dir, pattern, detailed_output_dir, downs, niter, eT_factor, eL_factor)
+function affine_for_initial_alignment(atlas_file, input_dir, pattern, detailed_output_dir, downs, niter)
 % load slices
 % construct 3D volume from initializer
 % do affine, and update initializer
@@ -49,7 +49,8 @@ AJ = vars.AJ;
 if nargin < 5
 downs = [8,4];
 end
-mindown = min(downs);
+mindown = min(downs); % I can downsample it this much and put it in the next function
+maxdown = max(downs); % I will need to pad it this much
 
 if nargin < 6
     niter = 50;
@@ -141,26 +142,30 @@ A = [0,1,0,0;
     1,0,0,0;
     0,0,-1,0;
     0,0,0,1]*A;
-if nargin < 7
-    eT_factor = 2e-7;
-end
-if nargin < 8
-    eL_factor = 1e-14;
-end
+
+% better to start small here due to boundary issues
+A = diag([0.8,0.8,0.8,1])*A;
 
 
+% if nargin < 7
+%     eT_factor = 2e-7;
+% end
+% if nargin < 8
+%     eL_factor = 1e-14;
+% end
 
-
-[xI,yI,zI,I] = downsample(xI,yI,zI,I,mindown*[1,1,1]);
-
+% we need to pad this image before downsampling
 % preprocess I, I want to pad it for example
 dxI = [xI(2)-xI(1), yI(2)-yI(1), zI(2)-zI(1)];
-
-
+for i = 1 : maxdown
 I = padarray(I,[1,1,1],'both'); % zero pad
 xI = [xI(1)-dxI(1), xI, xI(end)+dxI(1)];
 yI = [yI(1)-dxI(2), yI, yI(end)+dxI(2)];
 zI = [zI(1)-dxI(3), zI, zI(end)+dxI(3)];
+end
+[xI,yI,zI,I] = downsample(xI,yI,zI,I,mindown*[1,1,1]);
+
+
 
 
 
@@ -172,6 +177,8 @@ I = I - mean(I(:));
 I = I/std(I(:));
 
 
-
-A = ThreeD_to_3D_affine_registration(xI,yI,zI,I,xJ,yJ,zJ,Jnorm,A,downs/mindown,niter,eT_factor,eL_factor);
+% not using gradient descent
+% A = ThreeD_to_3D_affine_registration(xI,yI,zI,I,xJ,yJ,zJ,Jnorm,A,downs/mindown,niter,eT_factor,eL_factor);
+% using gauss newton instead
+A = ThreeD_to_3D_affine_registration_GN(xI,yI,zI,I,xJ,yJ,zJ,Jnorm,A,downs/mindown,niter);
 save([detailed_output_dir 'initializer_A.mat'],'AJ','A');
