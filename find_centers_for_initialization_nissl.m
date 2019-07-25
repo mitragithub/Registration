@@ -79,6 +79,9 @@ for i = 1 : length(files)
     W = Wd_;
     % hopefully avoid artifacts near edges
     buf = 5;
+    if buf > size(I,1) || buf > size(I,2)
+        buf = min([size(I,1),size(I,2)]);
+    end
     W(1:buf,:) = 0;
     W(end-buf+1:end,:) = 0;
     W(:,1:buf) = 0;
@@ -100,7 +103,7 @@ for i = 1 : length(files)
 %         tmp = I(:,:,c).*(W==1);
         
         % in some examples there are a lot of pixels that are exactly equal
-        % to 1, the above leads to nans        
+        % to 1, the above leads to nans      
         tmp = I(:,:,c).*(W>0.5);
 %         themax(c) = max(tmp(:));
         themax(c) = quantile(tmp(:),0.95);
@@ -120,8 +123,9 @@ for i = 1 : length(files)
     drawnow
     
     if isnan(Ix) || isnan(Iy)
-        warning(['nan detected on slice ' num2str(i) ' of ' num2str(length(files))]);
-        keyboard
+        warning(['nan detected on slice ' num2str(i) ' of ' num2str(length(files)) '.  Setting origin to 0  ']);
+        Ix = 0;
+        Iy = 0;
     end
 
     
