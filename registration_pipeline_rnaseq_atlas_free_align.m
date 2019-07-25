@@ -76,9 +76,7 @@ close all;
 % initial affine
 downs = [8,4];
 niter = 30;
-et_factor = 2e-7;
-el_factor = 1e-14;
-affine_for_initial_alignment(atlas_file, input_dir, pattern, detailed_output_dir, downs, niter, et_factor, el_factor)
+affine_for_initial_alignment(atlas_file, input_dir, pattern, detailed_output_dir, downs, niter)
 close all;
 
 
