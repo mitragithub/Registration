@@ -194,7 +194,7 @@ for downloop = 1 : length(downs)
         % make it rigid
         [U,S,V] = svd(Ai(1:2,1:2));
         Ai(1:2,1:2) = U*V';
-        
+        A = inv(Ai);
         
         
         drawnow
