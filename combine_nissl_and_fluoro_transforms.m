@@ -24,7 +24,7 @@ yJ = {};
 
 % loop through the slices
 count = 0;
-for i = 1 : length(is_fluoro)
+for i = 1 : length(varsNtoF.is_fluoro)
     if varsNtoF.is_nissl(i)
         count = count + 1;
         % for a nissl stain, use existing values
