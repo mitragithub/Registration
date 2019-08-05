@@ -1,4 +1,4 @@
-function atlas_free_rigid_alignment(target_dir, pattern, output_dir, r, downs, niter, et_factor, etheta_factor, skip_thick, load_initializer)
+function atlas_free_rigid_alignment(target_dir, pattern, output_dir, r, downs, niter, e, skip_thick, load_initializer)
 
 % atlas free slice alignment 
 % rigid alignment of a stack
@@ -9,11 +9,13 @@ function atlas_free_rigid_alignment(target_dir, pattern, output_dir, r, downs, n
 % TODO, deal with slice spacing in physical units
 % TODO, deal with slices left out
 % skip_thick is a number that we don't update if it is bigger than this
+% going to make a large change here and switch to GN optimization
 
 % keyboard
 
 addpath Functions/plotting
 addpath Functions/downsample
+addpath Functions/gradient
 
 if nargin < 4
     r = 25;
@@ -24,24 +26,16 @@ end
 if nargin < 6
     niter = 200;
 end
-if nargin < 8
+if nargin < 7
     % step sizes
-    etheta_factor = 5e-11;
-    et_factor = 5e-4;
-    
-    % on july 17, half the step size and double the iters
-    etheta_factor = 2e-11;
-    et_factor = 2e-4;
-    etheta_factor = 1e-11;
-    et_factor = 1e-4;
-
+    e = 0.5;
 
 end
 
-if nargin < 9
+if nargin < 8
     skip_thick = -1;
 end
-if nargin < 10
+if nargin < 9
     load_initializer=0;
 end
 
@@ -84,7 +78,7 @@ dz0 = cellfun(@(x)str2num(x), csv_data(:,7));
 
 
 
-
+% keyboard
 
 
 
@@ -109,192 +103,231 @@ if exist([output_dir 'initializer_A.mat'],'file') && load_initializer
     theta = squeeze(atan2(AJ(1,2,:),AJ(1,1,:)))';
     
     tx = squeeze(AJ(1,3,:))';
-    ty = squeeze(AJ(2,3,:))';
+    ty = squeeze(AJ(2,3,:))';   
+else
+    for i = 1 : size(AJ,3)
+        AJ(:,:,i) = eye(3);
+    end
 end
-
 
 Cost = zeros(1,10000);
 
 itercount = 0;
 
-
+if length(niter) == 1
+    niter = repmat(niter,length(downs));
+end
 for downcount = 1 : length(downs)
     down = downs(downcount);
+
     
-    % step sizes
-    % note about scaling
-    % if I downsample by 2, we expect the changes to be dominated by edges
-    % whose gradient will get two times smaller
-    % but
-    % we also must consider the value of the error at the edge
-    % due to blurring, this may also get two times smaller
-    % so maybe there should be a factor of down squared?
-    etheta = etheta_factor*down;
-    et = et_factor*down;
-    
-    
-    % first pass, loop through files
-    % get max size
-    nx = [0,0];
-    for i = 1 : length(files)
-        I_ = imread([target_dir files{i}]);
-        I_ = double(I_)/255.0;
-        I_ = mean(I_,3);
+    % loop through the files
+    nxJ = zeros(length(files),2);
+    for i = 1 : n
+        J_ = imread([target_dir files{i}]);
+        J_ = double(J_)/255.0;
+        J_ = mean(J_,3);
+        xJ{i} = (1 : size(J_,2))*dxJ0(i,1); 
+        xJ{i} = xJ{i} - mean(xJ{i});
+        yJ{i} = (1 : size(J_,1))*dxJ0(i,2); 
+        yJ{i} = yJ{i} - mean(yJ{i});        
         
-        
-        
-        % for padding
-        val(i) = mode(I_(I_(:)~=1));
+        % padding values
+        val(i) = mode(J_(J_(:)~=1));
         if isnan(val(i))
             val(i) = val(i-1); % entirely missing slice?
         end
-        I_(I_==1) = val(i);
-        
+        J_(J_==1) = val(i);
         
         % for thick images, just ignore them
         if dz0(i) > skip_thick && skip_thick > 0
             if i > 1
-                I_ = ones(size(I_))*val(i-1);
+                J_ = ones(size(J_))*val(i-1);
             else
-                I_ = zeros(size(I_));
+                J_ = zeros(size(J_));
             end
         end
         
         
-        [~,~,I_] = downsample2D(1:size(I_,2),1:size(I_,1),I_,down*[1 1]);
+        % downsample
+        [xJ{i},yJ{i},J{i}] = downsample2D(xJ{i},yJ{i},J_,down*[1 1]);
+        % sometimes images will just be one pixel
+        if size(J{i},1) < 2
+            J{i} = [J{i};J{i}];
+            yJ{i} = [yJ{i}(1),yJ{i}(1)+1];
+        end
+        if size(J{i},2) < 2
+            J{i} = [J{i},J{i}];
+            xJ{i} = [xJ{i}(1),xJ{i}(1)+1];
+        end
+        % no need to standardize
+%         J{i} = ( J{i} - mean(J{i}(:)) ) / std(J{i}(:));
         
-        Iload{i} = I_;
-        nx = max(nx,[size(I_,2),size(I_,1)]);
+        nxJ(i,:) = [size(J{i},2),size(J{i},1)];
+        dxJ(i,:) = [xJ{i}(2)-xJ{i}(1), yJ{i}(2)-yJ{i}(1)];
+%         dxJ(i,:) = dxJ0(i,:)*down;
+        
+        
     end
-    nx = [nx,length(files)];
-    dx = [down*dxJ0(1,1),down*dxJ0(1,2),1/n*nx(1)*dxJ0(1,1)*down]; 
-    % the dz component doesn't matter, just use something to display as a square
+    nxI = [max(nxJ,[],1),length(files)];
+    % last component doesn't matter, display as a square
+    dxI = [dxJ(1,:),1/n*nxI(1)*dxJ0(1,1)*down]; % common to all slices
+    I0 = zeros(nxI(2),nxI(1),nxI(3));
     
-    x = (0 : nx(1)-1)*dx(1);x = x - mean(x);
-    y = (0 : nx(2)-1)*dx(2);y = y - mean(y);
-    z = (0 : nx(3)-1)*dx(3);z = z - mean(z);
+
     
-    [XS,YS] = meshgrid(x,y);
+    xI = (0 : nxI(1)-1)*dxI(1);xI = xI - mean(xI);
+    yI = (0 : nxI(2)-1)*dxI(2);yI = yI - mean(yI);
+    zI = (0 : nxI(3)-1)*dxI(3);zI = zI - mean(zI);
+    [XI_,YI_] = meshgrid(xI,yI);
     
-    % load data again and pad to a fixed size
-    % we will need to use zero centered coordinates
-    I = zeros(nx(2),nx(1),nx(3));
-    for i = 1 : length(files)
-        tmp = I(1:size(Iload{i},1),1:size(Iload{i},2),i);
-        tmp(tmp==1) = val(i);
-        I(:,:,i) = val(i);
-        offr = round(size(I,1)/2-size(tmp,1)/2);
-        offc = round(size(I,2)/2-size(tmp,2)/2);
-        I((1:size(Iload{i},1))+offr, (1:size(Iload{i},2))+offc, i) = Iload{i};
-    end
-    I = (I - mean(I(:)))/std(I(:));
+
+    
     qlim = [0.001,0.999];
-    clim = quantile(I(:),qlim);
+    clim = quantile(I0(:),qlim);
     
     %%
     % weights for averaging
     tmp = exp(-[-r:r].^2/2/(r/3)^2);
     tmp = tmp / sum(tmp);
-    CC = ([-r:r]==0) - tmp;
-    CC = CC*0.2;
-    nmax = length(CC);
-    %%
+%     CC = ([-r:r]==0) - tmp;
+%     CC = CC*0.2;
+    CC = tmp;
+    CC(([-r:r]==0)) = 0;
+    CC = CC/sum(CC);
     
-    [I_x,I_y,I_z] = gradient(I,dx(1),dx(2),1);
-    for iter = 1 : niter
-        I_R = zeros(size(I));
-        I_x_R = zeros(size(I));
-        I_y_R = zeros(size(I));
-        % deform image and its derivatives
-        for i = 1 : nx(3)
-            Xs = cos(theta(i))*XS - sin(theta(i))*YS + tx(i);
-            Ys = sin(theta(i))*XS + cos(theta(i))*YS + ty(i);
-            F = griddedInterpolant({y,x},I(:,:,i),'linear','nearest');
-            I_R(:,:,i) = F(Ys,Xs);
-            F = griddedInterpolant({y,x},I_x(:,:,i),'linear','nearest');
-            I_x_R(:,:,i) = F(Ys,Xs);
-            F = griddedInterpolant({y,x},I_y(:,:,i),'linear','nearest');
-            I_y_R(:,:,i) = F(Ys,Xs);            
+    nmax = length(CC);
+    
+    
+    %%
+    for it = 1 : niter(downcount)
+        
+        % load data again into I
+        for i = 1 : n
+            A = AJ(:,:,i);
+            Xs = A(1,1)*XI_ + A(1,2)*YI_ + A(1,3);
+            Ys = A(2,1)*XI_ + A(2,2)*YI_ + A(2,3);
+            F = griddedInterpolant({yJ{i},xJ{i}},J{i},'linear','none');
+            tmp = F(Ys,Xs);
+            tmp(isnan(tmp)) = val(i);
+            I0(:,:,i) = tmp;
         end
-        
-        danfigure(1);
-        sliceView(x,y,z,I_R,7,clim)
-        
-        
-        
-        % apply A to R
-        % 0 pad
-        off = (nmax-1)/2;
-        I_R_pad = padarray(I_R,[0,0,off],'symmetric','both');
-        AI_R_pad = zeros(size(I_R_pad));
-        for i = 1 : length(CC)
-            %         i-off-1
-            AI_R_pad = AI_R_pad + CC(i)*circshift(I_R_pad,[0,0,i-off-1]);
+        if it == 1
+            qlim = [0.001,0.999];
+            clim = quantile(I0(:),qlim);
         end
-        
-        AI_R = AI_R_pad(:,:,1+off:end-off);
-        danfigure(2);
-        sliceView(x,y,z,AI_R);
-        
-        
-        % get the cost
-        E = sum(AI_R(:).*I_R(:)/2*prod(dx(1:3)));
-        disp(['Down ' num2str(down) ', it ' num2str(iter) ', E ' num2str(E) ])
-        itercount = itercount + 1;
-        Cost(itercount) = E;
-        danfigure(33);
-        plot(Cost(1:itercount))
-        
-        % now calculate gradient on each slice
-        thetagrad = zeros(size(theta));
-        txgrad = zeros(size(tx));
-        tygrad = zeros(size(ty));
-        for i = 1 : nx(3)
+
+    
+    
+        % first pad the image
+        npad = r;
+        I0p = padarray(I0,[0,0,npad],'both','symmetric');
+        I = convn(I0p,reshape(CC,1,1,[]),'same');
+        I = I(:,:,npad+1:end-npad);
+        % compute the image
+        for i = 1 : n
             if dz0(i) > skip_thick && skip_thick>0
                 continue
             end
-            thetagrad(i) = sum(sum(AI_R(:,:,i) .* (I_x_R(:,:,i).*(-sin(theta(i))*XS - cos(theta(i))*YS) + I_y_R(:,:,i).*(cos(theta(i))*XS + -sin(theta(i))*YS)   ) )) * prod(dx(1:2));
-            txgrad(i) = sum(sum(AI_R(:,:,i).*I_x_R(:,:,i)))*prod(dx(1:2));
-            tygrad(i) = sum(sum(AI_R(:,:,i).*I_y_R(:,:,i)))*prod(dx(1:2));
+            % deform each slice
+            Ai = inv(AJ(:,:,i));
+            A = AJ(:,:,i);
+            [XJ,YJ] = meshgrid(xJ{i},yJ{i});
+            Xs = Ai(1,1)*XJ + Ai(1,2)*YJ  + Ai(1,3);
+            Ys = Ai(2,1)*XJ + Ai(2,2)*YJ + Ai(2,3);
+            F = griddedInterpolant({yI,xI},I(:,:,i),'linear','nearest');
+            AI = F(Ys,Xs);
+            
+            % error
+            err = AI - J{i};
+            % gradient
+            [AI_x,AI_y] = gradient2d(AI,dxJ(i,1),dxJ(i,2));
+            Derr = zeros(size(AI,1),size(AI,2),6);
+            count = 0;
+            for r_ = 1 : 2
+                for c = 1 : 3
+                    dA = double((1:3==r_))' * double((1:3==c));
+                    AdAAi = A*dA;
+                    Xs = AdAAi(1,1)*XJ + AdAAi(1,2)*YJ + AdAAi(1,3);
+                    Ys = AdAAi(2,1)*XJ + AdAAi(2,2)*YJ + AdAAi(2,3);
+                    count = count + 1;
+                    Derr(:,:,count) = AI_x.*Xs + AI_y.*Ys;
+                end
+            end
+            tmp = reshape(Derr,[],6);
+            DerrDerr = tmp'*tmp;
+            
+            
+            % update
+            step = DerrDerr \ (tmp'*err(:));
+            step = reshape(step,3,2)';
+            if any(isnan(step(:))) || any(isinf(step(:)))
+                step = zeros(size(step));
+%                 keyboard
+            end
+            % AJ = repmat(eye(3),[1,1,length(files)]);
+
+            Ai(1:2,1:3) = Ai(1:2,1:3) - e * step;
+
+            % rigid
+            [U,S,V] = svd(Ai(1:2,1:2));
+            Ai(1:2,1:2) = U*V';
+            AJ(:,:,i) = inv(Ai);
+        
+            if i == 1
+                danfigure(25);
+                clf
+                subplot(2,2,1)
+                imagesc(I(:,:,i));
+                title('I')
+                colorbar;
+                
+                subplot(2,2,2)
+                imagesc(J{i})
+                title('J');
+                colorbar;
+                
+                subplot(2,2,3)
+                imagesc(I0(:,:,i))
+                title('I0')
+                colorbar
+                
+                subplot(2,2,4)
+                imagesc(err)
+                title('err')
+                colorbar
+                
+                drawnow
+            end
+                
+        
         end
-        theta = theta - etheta * thetagrad;
-        tx = tx - et*txgrad;
-        ty = ty - et*tygrad;
         
-        % make them zero maen
-        tx = tx - mean(tx);
-        ty = ty - mean(ty);
-        theta = theta - mean(theta);
+        danfigure(99);
+        sliceView(xI,yI,zI,I)
+        danfigure(100);
+        sliceView(xI,yI,zI,I0)
+        title(['down ' num2str(down) ', iter ' num2str(it)])
         
-%         disp(tx(14));disp(ty(14));disp(theta(14));
         
         
         drawnow;
-    end % of loop over iterations
+        
+        
+        
+        % make it zero mean(?)
+    end
+
     
     
 end % end of down loop
 
-
-% save data in required format
-for i = 1 : n
-    % note I apply transforms to each slice like this
-%     Xs = cos(theta(i))*XS - sin(theta(i))*YS + tx(i);
-%     Ys = sin(theta(i))*XS + cos(theta(i))*YS + ty(i);
-%     F = griddedInterpolant({y,x},I(:,:,i),'linear','nearest');
-
-    A = [cos(theta(i)),-sin(theta(i)),tx(i);
-        sin(theta(i)),cos(theta(i)),ty(i);
-        0,0,1];
-
-    AJ(:,:,i) = A;
-end
 if ~exist(output_dir,'dir')
     mkdir(output_dir);
 end
 save([output_dir 'initializer_A.mat'],'AJ');
 
-
+% keyboard
 return
 keyboard
 
@@ -303,7 +336,7 @@ keyboard
 
 for i = 1 : n
     danfigure(44);
-    imagesc(I_R(:,:,i))
+    imagesc(I0(:,:,i))
     axis image
     title(['slice ' num2str(i) ' of ' num2str(n)])
     drawnow
