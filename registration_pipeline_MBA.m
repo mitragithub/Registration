@@ -20,6 +20,7 @@ if nargin < 5
 end
 %%
 % testing on daniels computer
+config_file = 'mba_nissl_fluoro_config.ini';
 if nargin == 0
     seg_file = '/cis/home/dtward/Documents/ARA/Mouse_CCF/vtk/annotation_50.vtk';
     atlas_file = '/cis/home/dtward/Documents/ARA/Mouse_CCF/vtk/ara_nissl_50.vtk';
@@ -31,8 +32,9 @@ if nargin == 0
 
     input_dir = '/cis/home/dtward/Documents/intensity_transform_and_missing_data/csh_slices/Xu2Daniel/PMD1156/';
     output_dir = 'PMD1156_test_00/';
-
-    
+    output_dir = 'PMD1156_test_01/';
+    config_file = 'mba_nissl_fluoro_config_nonrigid.ini';
+    output_dir = 'PMD1156_test_02/';
     
     % ideally this step should be done before hand
     create_location_csv_MBA(input_dir, 14.72, 14.72, 20)
@@ -56,11 +58,16 @@ r = 25;
 % not enough for a full accurate reconstruction
 downs = [32,16];
 niter = 40;
-et_factor = 1e-4;
-etheta_factor = 1e-11;
 skip_thick = -1; % no thick slices to be skipped
 load_initializer = 1;
-atlas_free_rigid_alignment(input_dir, pattern, detailed_output_dir, r, downs, niter, et_factor, etheta_factor, skip_thick, load_initializer)
+e = 0.1;
+atlas_free_rigid_alignment(input_dir, pattern, detailed_output_dir, r, downs, niter, e, skip_thick, load_initializer)
+
+% % this is the old method, currently works fine but above uses gauss
+% newton and is much more robust
+% etheta_factor = 1e-11;
+% et_factor = 1e-4;
+% atlas_free_rigid_alignment_old(input_dir, pattern, detailed_output_dir, r, downs, niter, et_factor,etheta_factor, skip_thick, load_initializer)
 close all;
 
 % initial affine

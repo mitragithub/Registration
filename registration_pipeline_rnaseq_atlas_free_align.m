@@ -20,6 +20,7 @@ if nargin < 5
 end
 %%
 % testing on daniels computer
+config_file = 'rnaseq_config.ini';
 if nargin == 0
     seg_file = '/cis/home/dtward/Documents/ARA/Mouse_CCF/vtk/annotation_50.vtk';
     atlas_file = '/cis/home/dtward/Documents/ARA/Mouse_CCF/vtk/ara_nissl_50.vtk';
@@ -66,11 +67,10 @@ r = 25;
 % not enough for a full accurate reconstruction
 downs = [32,16];
 niter = 40;
-et_factor = 1e-4;
-etheta_factor = 1e-11;
+e = 0.5;
 skip_thick = 25; % skip thick
 load_initializer = 1;
-atlas_free_rigid_alignment(input_dir, pattern, detailed_output_dir, r, downs, niter, et_factor, etheta_factor, skip_thick, load_initializer)
+atlas_free_rigid_alignment(input_dir, pattern, detailed_output_dir, r, downs, niter, e, skip_thick, load_initializer)
 close all;
 
 % initial affine
@@ -87,7 +87,7 @@ close all;
 warning('off','MATLAB:griddedInterpolant:MeshgridEval2DWarnId')
 warning('off','MATLAB:griddedInterpolant:MeshgridEval3DWarnId')
 nonrigid_thick_only = 1;
-ThreeD_to_2D_registration(atlas_file, input_dir, pattern, config_file, detailed_output_dir,nonrigid_thick_only)
+ThreeD_to_2D_registration(atlas_file, input_dir, pattern, config_file, detailed_output_dir, nonrigid_thick_only)
 close all;
 
 
