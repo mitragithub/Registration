@@ -60,7 +60,8 @@ for i = 1 : length(files)
 %     if i == 14;keyboard;end
     disp(['downsampling ' num2str(i) ' of ' num2str(length(files))])
     I_ = imread([target_dir files{i}]);
-    W_ = double(~(I_(:,:,1) == 255 & I_(:,:,2) == 255 & I_(:,:,3) == 255));
+%     W_ = double(~(I_(:,:,1) == 255 & I_(:,:,2) == 255 & I_(:,:,3) == 255));
+    W_ = 1.0 - detect_padding_in_nissl(I_);
     I_ = double(I_)/255.0;
     [~,~,Wd_] = downsample2D(1:size(I_,2),1:size(I_,1),W_,down*[1,1]);
     Id_ = zeros(size(Wd_,1),size(Wd_,2),3);
