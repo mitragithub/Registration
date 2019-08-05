@@ -69,6 +69,7 @@ for i = 1 : length(files)
     % we want to downsample by 3 here to get resolution ~14 close to atlas ~45 
     [xJ_,yJ_,J_] = downsample2D(xJ_,yJ_,J_,[1,1]*3*mindown);
     
+    
     danfigure(1);
     imagesc(xJ_,yJ_,J_)
     axis image;
@@ -85,7 +86,7 @@ for i = 1 : length(files)
         [XJ_,YJ_] = meshgrid(xJ,yJ);
     end
     
-    % apply transform
+    % apply transform    
     F = griddedInterpolant({yJ_,xJ_},J_,'linear','none');
     B = AJ(:,:,i);
     Xs = B(1,1)*XJ_ + B(1,2)*YJ_ + B(1,3);
