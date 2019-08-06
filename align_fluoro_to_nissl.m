@@ -75,7 +75,12 @@ for i = 1 : length(zJ0)
     % I is dark on light
     [XI,YI] = meshgrid(xI,yI);
     I_ = min(I,[],3);
-    I_ = max(I_(:)) - I_;
+%     I_ = max(I_(:)) - I_;
+    % the above is not robust enough
+    q = 0.95;
+%     q = 1.0;
+    I_ = quantile(I_(:),q) - I_;
+    I_(I_<0) = 0;
     I_ = I_/sum(I_(:));
     comI = [sum(I_(:).*XI(:)),sum(I_(:).*YI(:))];
     if any(isnan(comI))
@@ -86,11 +91,15 @@ for i = 1 : length(zJ0)
     if strcmp(fluoro_pattern, '*-F*.tif')
         [XJ,YJ] = meshgrid(xJ,yJ);
         J_ = max(J,[],3);
-        J_ = J_ - min(J_(:));
+%         J_ = J_ - min(J_(:));
+        J_ = J_ - quantile(J_(:),1-q);
+        J_(J_<0) = 0;
     elseif strcmp(fluoro_pattern, '*-IHC*.tif') % dark on light
         [XJ,YJ] = meshgrid(xJ,yJ);
         J_ = min(J,[],3);
-        J_ = max(J_(:)) - J_;
+%         J_ = max(J_(:)) - J_;
+        J_ = quantile(J_(:),q) - J_;
+        J_(J_<0) = 0;
     end
     J_ = J_/sum(J_(:));
     comJ = [sum(J_(:).*XJ(:)),sum(J_(:).*YJ(:))];
