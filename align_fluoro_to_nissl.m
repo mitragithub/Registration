@@ -77,9 +77,9 @@ for i = 1 : length(zJ0)
     I_ = min(I,[],3);
 %     I_ = max(I_(:)) - I_;
     % the above is not robust enough
-    q = 0.80;
+    q = 0.95;
 %     q = 1.0;
-    I_ = quantile(I_(:),q) - I_;
+    I_ = quantile(I_(I_(:)~=1),q) - I_; 
     I_(I_<0) = 0;
     I_ = I_/sum(I_(:));
     comI = [sum(I_(:).*XI(:)),sum(I_(:).*YI(:))];
