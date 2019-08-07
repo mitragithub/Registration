@@ -74,12 +74,14 @@ for i = 1 : length(zJ0)
     % we want an initial translation by center of mass
     % I is dark on light
     [XI,YI] = meshgrid(xI,yI);
+    W = detect_padding_in_nissl(I);
     I_ = min(I,[],3);
 %     I_ = max(I_(:)) - I_;
     % the above is not robust enough
     q = 0.95;
 %     q = 1.0;
-    I_ = quantile(I_(I_(:)~=1),q) - I_; 
+    
+    I_ = quantile(I_(~W),q) - I_; 
     I_(I_<0) = 0;
     I_ = I_/sum(I_(:));
     comI = [sum(I_(:).*XI(:)),sum(I_(:).*YI(:))];
