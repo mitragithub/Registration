@@ -4,6 +4,8 @@ function align_fluoro_to_nissl(input_dir, nissl_pattern, fluoro_pattern, detaile
 % for reconstruction, this will need to be combined with transformation of
 % the neighbor
 
+addpath Functions/plotting
+
 % get the target data
 geometry_file = dir([input_dir '*.csv']);
 fid = fopen([input_dir geometry_file(1).name],'rt');
