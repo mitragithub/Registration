@@ -12,25 +12,27 @@
 clear all;
 close all;
 fclose all;
+addpath Functions/vtk/
+addpath Functions/plotting/
 
-input_dir = 'PMD3317_test_00/';
-target_dir = '/cis/home/dtward/Documents/intensity_transform_and_missing_data/csh_slices/Xu2Daniel/PMD3317/';
-seg_file = '/cis/home/dtward/Documents/ARA/Mouse_CCF/vtk/annotation_50.vtk';
-atlas_file = '/cis/home/dtward/Documents/ARA/Mouse_CCF/vtk/ara_nissl_50.vtk';
-contour_spacing = 1000; % contour distance in um
-xyrange = [-6000,6000];
-maxscalerange = 2; % for detjac
 
 
 slices = [50 100 150 200 250 300];
-output_dir = '3317_manuscript_figs/'
+output_dir = '3317_manuscript_figs/';
+input_dir = 'PMD3317_test_00/';
+target_dir = '/cis/home/dtward/Documents/intensity_transform_and_missing_data/csh_slices/Xu2Daniel/PMD3317/';
+
+
+seg_file = '/cis/home/dtward/Documents/ARA/Mouse_CCF/vtk/annotation_50.vtk';
+atlas_file = '/cis/home/dtward/Documents/ARA/Mouse_CCF/vtk/ara_nissl_50.vtk';
+contour_spacing = 1000; % contour distance in um (don't change)
+xyrange = [-6000,6000]; % fix bounds of image (don't change)
+maxscalerange = 2; % for detjac (don't change)
+
 if ~exist(output_dir,'dir')
     mkdir(output_dir);
 end
 
-
-addpath Functions/vtk/
-addpath Functions/plotting/
 
 
 [xI,yI,zI,I,title_,names] = read_vtk_image(atlas_file);
