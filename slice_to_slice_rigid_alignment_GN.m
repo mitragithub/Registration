@@ -96,7 +96,7 @@ for downloop = 1 : length(downs)
     xId = (1 : size(Id,2))*dxId(1); xId = xId - mean(xId);
     yId = (1 : size(Id,1))*dxId(2); yId = yId - mean(yId);
     Jd = [];
-    for c = 1 : CI
+    for c = 1 : CJ
         [~,~,Jd(:,:,c)] = downsample2D(1:size(J,2),1:size(J,1),J(:,:,c),[1,1]*d);
     end
     dxJd = dxJ*d;
@@ -108,7 +108,7 @@ for downloop = 1 : length(downs)
     %
     [XJd,YJd] = meshgrid(xJd,yJd);
     for it = 1 : niter(downloop)
-        
+
         % transform I
         AId = zeros(size(Jd,1),size(Jd,2),CI);
         Xs = Ai(1,1)*XJd + Ai(1,2)*YJd + Ai(1,3);
@@ -200,8 +200,9 @@ for downloop = 1 : length(downs)
         if any(isnan(step))
             step = zeros(size(step));
         end
+        if it > 1 || downloop > 1
         Ai(1:2,1:3) = Ai(1:2,1:3) - e * step;
-        
+        end
         % make it rigid
         [U,S,V] = svd(Ai(1:2,1:2));
         Ai(1:2,1:2) = U*V';
