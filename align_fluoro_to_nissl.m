@@ -143,8 +143,8 @@ for i = 1 : length(zJ0)
     try
         NtoF(:,:,i) = slice_to_slice_rigid_alignment_GN_weight(xI,yI,I,xJ,yJ,J,A0,downs,niter);
     catch
-        warning(['Could not calculate slice nissl to fluoro alignment for slice ' num2str(i)]);
-        keyboard
+        warning(['Could not calculate slice nissl to fluoro alignment for slice ' num2str(i) ', setting to identity']);
+        NtoF(:,:,i) = eye(3);        
     end
 end
 
