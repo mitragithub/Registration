@@ -33,11 +33,26 @@ if nargin == 0
     input_dir = '/cis/home/dtward/Documents/intensity_transform_and_missing_data/csh_slices/Xu2Daniel/PMD1156/';
     output_dir = 'PMD1156_test_00/';
     output_dir = 'PMD1156_test_01/';
-    config_file = 'mba_nissl_fluoro_config_nonrigid.ini';
+%     config_file = 'mba_nissl_fluoro_config_nonrigid.ini';
     output_dir = 'PMD1156_test_02/';
     
+    %
+    input_dir = '/cis/home/dtward/Documents/intensity_transform_and_missing_data/csh_slices/Xu2Daniel/PMD3317/';
+    output_dir = 'PMD3317_test_00/';
+    
+    
+    % test hanging for xu
+    input_dir = '/cis/home/dtward/Documents/intensity_transform_and_missing_data/csh_slices/Registration/INPUT_DATA/'
+    output_dir = 'PMD2937_test_forxu/'
+    % hanging was fixed, it was in 2d to 2d alignment, when it failed I
+    % went to keyboard
+    
+    input_dir = '/cis/home/dtward/Documents/intensity_transform_and_missing_data/csh_slices/Registration/PMD1027_case1_data/INPUT_DATA/'
+    output_dir = 'PMD1027_case1_data/OUTPUT/'
+    
+    
     % ideally this step should be done before hand
-    create_location_csv_MBA(input_dir, 14.72, 14.72, 20)
+%     create_location_csv_MBA(input_dir, 14.72, 14.72, 20)
     keyboard
 end
 detailed_output_dir = [output_dir(1:end-1),'_detailed/'];
@@ -95,12 +110,14 @@ for f = 1 : length(files)
     end
 end
 align_fluoro_to_nissl(input_dir, nissl_pattern, fluoro_pattern, detailed_output_dir);
+% align_fluoro_to_nissl_savepics_3317(input_dir, nissl_pattern, fluoro_pattern, detailed_output_dir);
 close all;
 
 
 % now 3D to 2D transformations for nissl
 warning('off','MATLAB:griddedInterpolant:MeshgridEval2DWarnId')
 warning('off','MATLAB:griddedInterpolant:MeshgridEval3DWarnId')
+
 ThreeD_to_2D_registration(atlas_file, input_dir, pattern, config_file, detailed_output_dir)
 close all;
 
@@ -113,3 +130,17 @@ combine_nissl_and_fluoro_transforms(detailed_output_dir)
 % step 3 is to generate standard vtk outputs
 apply_deformation({seg_file,atlas_file}, input_dir, detailed_output_dir, output_dir);
 close all;
+
+
+% 3317 bad ones 
+% 3_0033
+% 3317_2_191
+% 2_200
+% _1_0268
+% _3_0270
+% _2_ 0272
+% _3_282
+% 3_285
+% 286
+% 287
+% 299
