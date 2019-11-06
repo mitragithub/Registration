@@ -1,4 +1,4 @@
-function A = slice_to_slice_rigid_alignment_GN(xI,yI,I,xJ,yJ,J,A0,downs,niter,e)
+function A = slice_to_slice_rigid_alignment_GN_weight(xI,yI,I,xJ,yJ,J,A0,downs,niter,e)
 % rigidly align two slices, possibly different modalities
 % we wish to align image I to image J rigidly
 % we use exponential parameterization
@@ -20,7 +20,8 @@ function A = slice_to_slice_rigid_alignment_GN(xI,yI,I,xJ,yJ,J,A0,downs,niter,e)
 % = int (I'(Bx) - J(x)) DI'(Bx) dB x dx
 % = int (I'(Bx) - J(x)) D[I'(Bx)] Bi dB x dx
 % 
-% need to incorporate weight
+% need to incorporate weight (done)
+% in this code we set artifact channel value to 1 and do not update
 %
 if nargin == 0
     % run an example
@@ -153,6 +154,10 @@ for downloop = 1 : length(downs)
         % update weights
         WM = exp(-sum(err.^2,3)/2/sigmaM^2)/sqrt(2*pi*sigmaM^2)^size(Jd,3);
         WA = exp(-sum((bsxfun(@minus,Jd, muA)).^2,3)/2/sigmaA^2)/sqrt(2*pi*sigmaA^2)^size(Jd,3);
+        WSum = WM+WA;
+        WM = WM./WSum;
+        WA = WA./WSum;
+        
         
         
         if ~mod(it-1,ndraw) || it == niter(downloop)
