@@ -30,6 +30,8 @@ while 1
     elseif (regexp(line,regexptranslate('wildcard',fluoro_pattern)))
         is_fluoro(count) = 1;
         is_nissl(count) = 0;
+    else
+        disp([num2str(count)  ' ' line])
     end
     
 
