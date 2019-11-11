@@ -43,6 +43,8 @@ if nargin == 0
 end
 
 
+
+
 addpath Functions/plotting
 addpath Functions/gradient
 addpath Functions/downsample
@@ -157,6 +159,8 @@ for downloop = 1 : length(downs)
         WSum = WM+WA;
         WM = WM./WSum;
         WA = WA./WSum;
+        WM(WSum==0) = 0;
+        WA(WSum==0) = 0;
         
         
         

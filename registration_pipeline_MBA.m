@@ -49,7 +49,21 @@ if nargin == 0
     
     input_dir = '/cis/home/dtward/Documents/intensity_transform_and_missing_data/csh_slices/Registration/PMD1027_case1_data/INPUT_DATA/'
     output_dir = 'PMD1027_case1_data/OUTPUT/'
+
     
+    input_dir = '/cis/home/dtward/Documents/intensity_transform_and_missing_data/csh_slices/Registration/PMD1197_case2_data/INPUT_DATA/'
+    output_dir = 'PMD1197_case2_data/OUTPUT/'
+    
+    % try bingxing's result with big ventricle
+    input_dir = '/cis/home/dtward/Documents/intensity_transform_and_missing_data/csh_slices/Registration/PMD1026_data/INPUT_DATA/'
+    output_dir = 'PMD1026_data/OUTPUT/' 
+    config_file = 'mba_nissl_fluoro_config_low_artifact.ini'; 
+    % this was with prior 
+    %piM = 0.99
+    % piA = 0.005
+    % piB = 0.005    
+    output_dir = 'PMD1026_data/OUTPUT2/'
+    % try again with even smaller prior (factor of 10)
     
     % ideally this step should be done before hand
 %     create_location_csv_MBA(input_dir, 14.72, 14.72, 20)
