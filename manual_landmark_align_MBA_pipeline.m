@@ -11,6 +11,13 @@ if nargin == 0
     input_dir = '/cis/home/dtward/Documents/intensity_transform_and_missing_data/csh_slices/Registration/PMD1027_case1_data/INPUT_DATA/';
     qc_file = '/cis/home/dtward/Documents/intensity_transform_and_missing_data/csh_slices/Registration/PMD1027_case1_data/OUTPUT/PMD1028&1027-F36-2013.03.02-02.15.31_PMD1027_3_0108_preview_1_straight.png';
 end
+
+
+% for Xu, the "detailed output" directory is the same as the output
+% directory
+% detailed_postfix = '_detailed';
+detailed_postfix = '';
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %% parse geometry file
 geometry_file = dir([input_dir '*.csv']);
@@ -344,7 +351,7 @@ end
 
 %%
 % now insert into pipeline
-NtoFfile = [dir_ '_detailed/NtoF.mat'];
+NtoFfile = [dir_ detailed_postfix '/NtoF.mat'];
 varsNtoF = load(NtoFfile);
 backup = [NtoFfile(1:end-4) '_beforeQC.mat'];
 if ~exist(backup,'file')
@@ -352,7 +359,7 @@ if ~exist(backup,'file')
 end
 
 
-matfile = [dir_ '_detailed/combined_A.mat'];
+matfile = [dir_ detailed_postfix '/combined_A.mat'];
 
 % make a copy if it doesn't exist
 backup = [matfile(1:end-4) '_beforeQC.mat'];
@@ -379,4 +386,7 @@ NtoF = varsNtoF.NtoF;
 inds = varsNtoF.inds;
 save(NtoFfile,'is_nissl','is_fluoro','files','NtoF','inds')
 
+%%
+% after
+% apply_deformation({seg_file,atlas_file}, input_dir, detailed_output_dir, output_dir);
 

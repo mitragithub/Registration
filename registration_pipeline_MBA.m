@@ -69,7 +69,9 @@ if nargin == 0
 %     create_location_csv_MBA(input_dir, 14.72, 14.72, 20)
     keyboard
 end
-detailed_output_dir = [output_dir(1:end-1),'_detailed/'];
+% detailed_output_dir = [output_dir(1:end-1),'_detailed/'];
+% Xu is doing this
+detailed_output_dir = output_dir;
 
 
 
@@ -116,6 +118,8 @@ close all;
 nissl_pattern = pattern;
 files = dir([input_dir '*.tif']);
 files = {files.name};
+found_fluoro = 0;
+found_ihc = 0;
 for f = 1 : length(files)
     if strfind(files{f}, '-F')
         fluoro_pattern = '*-F*.tif';
@@ -123,6 +127,7 @@ for f = 1 : length(files)
         fluoro_pattern = '*-IHC*.tif';
     end
 end
+
 align_fluoro_to_nissl(input_dir, nissl_pattern, fluoro_pattern, detailed_output_dir);
 % align_fluoro_to_nissl_savepics_3317(input_dir, nissl_pattern, fluoro_pattern, detailed_output_dir);
 close all;
@@ -145,16 +150,3 @@ combine_nissl_and_fluoro_transforms(detailed_output_dir)
 apply_deformation({seg_file,atlas_file}, input_dir, detailed_output_dir, output_dir);
 close all;
 
-
-% 3317 bad ones 
-% 3_0033
-% 3317_2_191
-% 2_200
-% _1_0268
-% _3_0270
-% _2_ 0272
-% _3_282
-% 3_285
-% 286
-% 287
-% 299
