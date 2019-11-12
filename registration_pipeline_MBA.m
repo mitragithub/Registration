@@ -33,14 +33,45 @@ if nargin == 0
     input_dir = '/cis/home/dtward/Documents/intensity_transform_and_missing_data/csh_slices/Xu2Daniel/PMD1156/';
     output_dir = 'PMD1156_test_00/';
     output_dir = 'PMD1156_test_01/';
-    config_file = 'mba_nissl_fluoro_config_nonrigid.ini';
+%     config_file = 'mba_nissl_fluoro_config_nonrigid.ini';
     output_dir = 'PMD1156_test_02/';
     
+    %
+    input_dir = '/cis/home/dtward/Documents/intensity_transform_and_missing_data/csh_slices/Xu2Daniel/PMD3317/';
+    output_dir = 'PMD3317_test_00/';
+    
+    
+    % test hanging for xu
+    input_dir = '/cis/home/dtward/Documents/intensity_transform_and_missing_data/csh_slices/Registration/INPUT_DATA/'
+    output_dir = 'PMD2937_test_forxu/'
+    % hanging was fixed, it was in 2d to 2d alignment, when it failed I
+    % went to keyboard
+    
+    input_dir = '/cis/home/dtward/Documents/intensity_transform_and_missing_data/csh_slices/Registration/PMD1027_case1_data/INPUT_DATA/'
+    output_dir = 'PMD1027_case1_data/OUTPUT/'
+
+    
+    input_dir = '/cis/home/dtward/Documents/intensity_transform_and_missing_data/csh_slices/Registration/PMD1197_case2_data/INPUT_DATA/'
+    output_dir = 'PMD1197_case2_data/OUTPUT/'
+    
+    % try bingxing's result with big ventricle
+    input_dir = '/cis/home/dtward/Documents/intensity_transform_and_missing_data/csh_slices/Registration/PMD1026_data/INPUT_DATA/'
+    output_dir = 'PMD1026_data/OUTPUT/' 
+    config_file = 'mba_nissl_fluoro_config_low_artifact.ini'; 
+    % this was with prior 
+    %piM = 0.99
+    % piA = 0.005
+    % piB = 0.005    
+    output_dir = 'PMD1026_data/OUTPUT2/'
+    % try again with even smaller prior (factor of 10)
+    
     % ideally this step should be done before hand
-    create_location_csv_MBA(input_dir, 14.72, 14.72, 20)
+%     create_location_csv_MBA(input_dir, 14.72, 14.72, 20)
     keyboard
 end
-detailed_output_dir = [output_dir(1:end-1),'_detailed/'];
+% detailed_output_dir = [output_dir(1:end-1),'_detailed/'];
+% Xu is doing this
+detailed_output_dir = output_dir;
 
 
 
@@ -87,6 +118,8 @@ close all;
 nissl_pattern = pattern;
 files = dir([input_dir '*.tif']);
 files = {files.name};
+found_fluoro = 0;
+found_ihc = 0;
 for f = 1 : length(files)
     if strfind(files{f}, '-F')
         fluoro_pattern = '*-F*.tif';
@@ -94,13 +127,16 @@ for f = 1 : length(files)
         fluoro_pattern = '*-IHC*.tif';
     end
 end
+
 align_fluoro_to_nissl(input_dir, nissl_pattern, fluoro_pattern, detailed_output_dir);
+% align_fluoro_to_nissl_savepics_3317(input_dir, nissl_pattern, fluoro_pattern, detailed_output_dir);
 close all;
 
 
 % now 3D to 2D transformations for nissl
 warning('off','MATLAB:griddedInterpolant:MeshgridEval2DWarnId')
 warning('off','MATLAB:griddedInterpolant:MeshgridEval3DWarnId')
+
 ThreeD_to_2D_registration(atlas_file, input_dir, pattern, config_file, detailed_output_dir)
 close all;
 
@@ -113,3 +149,4 @@ combine_nissl_and_fluoro_transforms(detailed_output_dir)
 % step 3 is to generate standard vtk outputs
 apply_deformation({seg_file,atlas_file}, input_dir, detailed_output_dir, output_dir);
 close all;
+

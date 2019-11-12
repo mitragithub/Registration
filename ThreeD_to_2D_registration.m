@@ -1,6 +1,7 @@
 function ThreeD_to_2D_registration(template_name, target_dir, pattern, config_file, output_dir, nonrigid_thick_only)
 % map 3D atlas to 2D slices
 % only use files that match pattern (with wildcards)
+% keyboard
 tic
 
 
@@ -169,7 +170,18 @@ for downloop = 1 : 3
         
         J{f} = double(imread([target_dir files{f}]))/255.0;
         % first thing is to get a mask on pixels that are pure white
-        WMask{f} = 1.0 - double(all(J{f}==1,3));
+%         danfigure(2729);
+%         WMask{f} = 1.0 - double(all(J{f}==1,3));
+%         subplot(1,2,1)
+%         imagesc(WMask{f})
+%         axis image
+        WMask{f} = 1.0 - detect_padding_in_nissl(J{f});
+%         subplot(1,2,2);
+%         imagesc(WMask{f})
+%         axis image
+%         keyboard
+        
+       
         
         % blur it
         if blurJ>0
@@ -213,6 +225,7 @@ for downloop = 1 : 3
         AJ(:,:,f) = eye(3); % affine matrix
         
         if ~mod(f-1,10)
+            danfigure(2);
             imagesc(xJ{f},yJ{f},J{f})
             axis image
             drawnow
@@ -422,7 +435,12 @@ for downloop = 1 : 3
             AJ(isnan(AJ)) = 0; % get rid of any nans
             for i = 1 : size(logmAJ,3)                
                 center(i,:) = AJ(1:2,3,i);
-                logmAJ(:,:,i) = logm(AJ(:,:,i));
+                tmp = logm(AJ(:,:,i));
+                if any(imag(tmp(:))) % if any are imaginary, we just set to identity and look at translation only
+                    AJ(1:2,1:2,i) = eye(2);
+                    tmp = logm(AJ(:,:,i));
+                end
+                logmAJ(:,:,i) = tmp;
             end
             themean = mean(logmAJ,3);
             themeanAJ = expm(themean);
@@ -562,7 +580,7 @@ for downloop = 1 : 3
         gradI = zeros(size(I));
         
         for f = 1 : length(files)
-            %     parfor f = 1 : length(files) % haven't tried yet
+            % parfor f = 1 : length(files) % haven't tried yet
             
             % nonrigid deformation on this slice
             % if it is thick (always)

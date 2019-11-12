@@ -1,4 +1,4 @@
-function A = slice_to_slice_rigid_alignment_GN(xI,yI,I,xJ,yJ,J,A0,downs,niter,e)
+function A = slice_to_slice_rigid_alignment_GN_weight(xI,yI,I,xJ,yJ,J,A0,downs,niter,e)
 % rigidly align two slices, possibly different modalities
 % we wish to align image I to image J rigidly
 % we use exponential parameterization
@@ -20,6 +20,9 @@ function A = slice_to_slice_rigid_alignment_GN(xI,yI,I,xJ,yJ,J,A0,downs,niter,e)
 % = int (I'(Bx) - J(x)) DI'(Bx) dB x dx
 % = int (I'(Bx) - J(x)) D[I'(Bx)] Bi dB x dx
 % 
+% need to incorporate weight (done)
+% in this code we set artifact channel value to 1 and do not update
+%
 if nargin == 0
     % run an example
     
@@ -38,6 +41,8 @@ if nargin == 0
     order = 2;
     keyboard
 end
+
+
 
 
 addpath Functions/plotting
@@ -77,6 +82,13 @@ end
 if nargin < 10
     e = 0.5;
 end
+
+
+sigmaM = 0.05;
+sigmaA = sigmaM*5;
+muA = cat(3,1,1,1);
+
+
 %%
 A = A0;
 Ai = inv(A);
@@ -96,19 +108,20 @@ for downloop = 1 : length(downs)
     xId = (1 : size(Id,2))*dxId(1); xId = xId - mean(xId);
     yId = (1 : size(Id,1))*dxId(2); yId = yId - mean(yId);
     Jd = [];
-    for c = 1 : CJ
+    for c = 1 : CI
         [~,~,Jd(:,:,c)] = downsample2D(1:size(J,2),1:size(J,1),J(:,:,c),[1,1]*d);
     end
     dxJd = dxJ*d;
     xJd = (1 : size(Jd,2))*dxJd(1); xJd = xJd - mean(xJd);
     yJd = (1 : size(Jd,1))*dxJd(2); yJd = yJd - mean(yJd);
     
-    
+    WM = ones(size(Jd(:,:,1)))*0.9;
+    WA = ones(size(Jd(:,:,1)))*0.1;
     
     %
     [XJd,YJd] = meshgrid(xJd,yJd);
     for it = 1 : niter(downloop)
-
+        
         % transform I
         AId = zeros(size(Jd,1),size(Jd,2),CI);
         Xs = Ai(1,1)*XJd + Ai(1,2)*YJd + Ai(1,3);
@@ -124,7 +137,7 @@ for downloop = 1 : length(downs)
         % start with just linear
         D = cat(3,ones(size(AId,1),size(AId,2)),AId);
         Dvec = reshape(D,[],size(D,3));
-        coeffs = (Dvec'*Dvec) \ (Dvec' * reshape(Jd,[],CJ));
+        coeffs = (bsxfun(@times,Dvec,WM(:))'*Dvec) \ (bsxfun(@times,Dvec,WM(:))' * reshape(Jd,[],CJ));
 
         if any(isnan(coeffs))
             D = cat(3,ones(size(AId,1),size(AId,2)));
@@ -137,9 +150,19 @@ for downloop = 1 : length(downs)
         
         
         % now get the cost
-        err = fAId - Jd;
+        err = fAId - Jd;                                                
+        E = sum(sum(sum(err.^2,3).*WM))/2/sigmaM^2*prod(dxJd);
         
-        E = sum(err(:).^2)/2*prod(dxJd);
+        % update weights
+        WM = exp(-sum(err.^2,3)/2/sigmaM^2)/sqrt(2*pi*sigmaM^2)^size(Jd,3);
+        WA = exp(-sum((bsxfun(@minus,Jd, muA)).^2,3)/2/sigmaA^2)/sqrt(2*pi*sigmaA^2)^size(Jd,3);
+        WSum = WM+WA;
+        WM = WM./WSum;
+        WA = WA./WSum;
+        WM(WSum==0) = 0;
+        WA(WSum==0) = 0;
+        
+        
         
         if ~mod(it-1,ndraw) || it == niter(downloop)
             danfigure(1);
@@ -191,18 +214,17 @@ for downloop = 1 : length(downs)
                 Jerr(:,:,:,count) = (bsxfun(@times, fAId_x,Xs) + bsxfun(@times, fAId_y,Ys));
             end
         end
-        JerrJerr = squeeze(sum(sum(sum(bsxfun(@times, permute(Jerr,[1,2,3,4,5]) , permute(Jerr,[1,2,3,5,4])),3),2),1));
+        JerrJerr = squeeze(sum(sum(sum(bsxfun(@times, permute(bsxfun(@times,Jerr,WM),[1,2,3,4,5]) , permute(Jerr,[1,2,3,5,4])),3),2),1));
         
         
         % update
-        step = JerrJerr \ squeeze(sum(sum(sum(bsxfun(@times, Jerr, err),3),2),1));
+        step = JerrJerr \ squeeze(sum(sum(sum(bsxfun(@times, bsxfun(@times,Jerr,WM), err),3),2),1));
         step = reshape(step,3,2)';
         if any(isnan(step))
             step = zeros(size(step));
         end
-        if it > 1 || downloop > 1
         Ai(1:2,1:3) = Ai(1:2,1:3) - e * step;
-        end
+        
         % make it rigid
         [U,S,V] = svd(Ai(1:2,1:2));
         Ai(1:2,1:2) = U*V';

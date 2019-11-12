@@ -30,6 +30,8 @@ while 1
     elseif (regexp(line,regexptranslate('wildcard',fluoro_pattern)))
         is_fluoro(count) = 1;
         is_nissl(count) = 0;
+    else
+        disp([num2str(count)  ' ' line])
     end
     
 
@@ -141,10 +143,10 @@ for i = 1 : length(zJ0)
     % this gauss newton version is much more numerically stable
     niter = 100;
     try
-        NtoF(:,:,i) = slice_to_slice_rigid_alignment_GN(xI,yI,I,xJ,yJ,J,A0,downs,niter);
+        NtoF(:,:,i) = slice_to_slice_rigid_alignment_GN_weight(xI,yI,I,xJ,yJ,J,A0,downs,niter);
     catch
-        warning(['Could not calculate slice nissl to fluoro alignment for slice ' num2str(i)]);
-        keyboard
+        warning(['Could not calculate slice nissl to fluoro alignment for slice ' num2str(i) ', setting to identity']);
+        NtoF(:,:,i) = eye(3);        
     end
 end
 
