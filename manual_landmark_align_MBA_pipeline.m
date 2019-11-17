@@ -110,7 +110,7 @@ end
 
 
 addpath Functions/plotting
-danfigure(111);
+figure(111);
 
 % we will add landmarks in a loop
 % these are the choices
