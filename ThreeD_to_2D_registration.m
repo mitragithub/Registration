@@ -768,7 +768,7 @@ for downloop = 1 : 3
                 WB{f} = piB_.*WB{f}./WSum;
                 
             end
-            
+                        
             
             %% now evaluate errors
             err{f} = fSAphiI{f} - J{f};
@@ -1316,6 +1316,7 @@ for downloop = 1 : 3
         Esave(it) = E;
         subplot(2,2,3)
         plot([EMsave(1:it);ERsave(1:it);sum(ERJsave(:,1:it),1);Esave(1:it)]');
+        saveas(gcf,[prefix 'energy.png'])
         disp(['Iter: ' num2str(it) ', energy: ' num2str(E) ', matching energy: ' num2str(EM) ', reg energy: ' num2str(ER) ', regJ energy: ' num2str(sum(ERJ))] )
         
         %%
