@@ -23,7 +23,6 @@ while 1
     count = count + 1;
     
     % check if it matches the pattern
-    
     if (regexp(line,regexptranslate('wildcard',nissl_pattern)))
         is_nissl(count) = 1;
         is_fluoro(count) = 0;
@@ -76,39 +75,30 @@ for i = 1 : length(zJ0)
     A0 = eye(3);
     
     % we want an initial translation by center of mass
+    % we will do this by thresholding on brightness and taking largest
+    % connected component
+    % maybe do EM with 3 compartments
+    mask = getmask(I,1);
+
     % I is dark on light
     [XI,YI] = meshgrid(xI,yI);
     W = detect_padding_in_nissl(I);
-    I_ = min(I,[],3);
-%     I_ = max(I_(:)) - I_;
-    % the above is not robust enough
-    q = 0.95;
-%     q = 1.0;
-    
-    I_ = quantile(I_(~W),q) - I_; 
-    I_(I_<0) = 0;
-    I_ = I_/sum(I_(:));
-    comI = [sum(I_(:).*XI(:)),sum(I_(:).*YI(:))];
+    mask = mask & ~W;
+    mask = double(mask) / sum(mask(:));
+    comI = [sum(mask(:).*XI(:)),sum(mask(:).*YI(:))];
     if any(isnan(comI))
         comI = [0,0];
     end
     
     % J is light on dark
+    [XJ,YJ] = meshgrid(xJ,yJ);
     if strcmp(fluoro_pattern, '*-F*.tif')
-        [XJ,YJ] = meshgrid(xJ,yJ);
-        J_ = max(J,[],3);
-%         J_ = J_ - min(J_(:));
-        J_ = J_ - quantile(J_(:),1-q);
-        J_(J_<0) = 0;
+        mask = getmask(J,0);
     elseif strcmp(fluoro_pattern, '*-IHC*.tif') % dark on light
-        [XJ,YJ] = meshgrid(xJ,yJ);
-        J_ = min(J,[],3);
-%         J_ = max(J_(:)) - J_;
-        J_ = quantile(J_(:),q) - J_;
-        J_(J_<0) = 0;
+        mask = getmask(J,1);
     end
-    J_ = J_/sum(J_(:));
-    comJ = [sum(J_(:).*XJ(:)),sum(J_(:).*YJ(:))];
+    mask =  double(mask)/sum(mask(:));
+    comJ = [sum(mask(:).*XJ(:)),sum(mask(:).*YJ(:))];
     if any(isnan(comJ))
         comJ = [0,0];
     end
@@ -116,13 +106,13 @@ for i = 1 : length(zJ0)
     % my com calcs are not very robust
     % look at some images with artifacts and you'll see
     
-    danfigure(1);
+    danfigure(51);
     imagesc(xI,yI,I);
     axis image
     hold on;
     scatter(comI(1),comI(2),'r','f')
     hold off;
-    danfigure(2);
+    danfigure(52);
     imagesc(xJ,yJ,J);
     axis image
     hold on;
