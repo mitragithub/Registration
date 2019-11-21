@@ -11,8 +11,8 @@ qcfilelist=qcfilelist{1};
 % qcfilelist
 for i=1:length(qcfilelist)
     [~,qcfilename,ext]=fileparts(qcfilelist{i});
+    qcskip=0;
     if contains(qcfilename,'-F')
-        qcskip=0;
         disp(['Processing ',qcfilename,'...'])
         % search for Nissl failures
         k=strfind(qcfilename,'_preview');
