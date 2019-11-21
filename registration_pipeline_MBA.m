@@ -65,6 +65,11 @@ if nargin == 0
     output_dir = 'PMD1026_data/OUTPUT2/'
     % try again with even smaller prior (factor of 10)
     
+    % go back to case 1, tro to enable edit mode
+    input_dir = '/cis/home/dtward/Documents/intensity_transform_and_missing_data/csh_slices/Registration/PMD1027_case1_data/INPUT_DATA/'
+    output_dir = 'PMD1027_case1_data/OUTPUT/'
+
+    
     % ideally this step should be done before hand
 %     create_location_csv_MBA(input_dir, 14.72, 14.72, 20)
     keyboard
@@ -150,3 +155,14 @@ combine_nissl_and_fluoro_transforms(detailed_output_dir)
 apply_deformation({seg_file,atlas_file}, input_dir, detailed_output_dir, output_dir);
 close all;
 
+
+
+
+%%
+% step 4, if desired, is to run in edit mode
+% edit mode is enabled by including segmentations in the ThreeD to 2D, 
+% it will read segmentations in the input directory, these will be binary
+% tifs
+% then it will update
+ThreeD_to_2D_registration({atlas_file,seg_file}, input_dir, pattern, config_file, detailed_output_dir)
+apply_deformation({seg_file,atlas_file}, input_dir, detailed_output_dir, output_dir);
