@@ -1,4 +1,5 @@
 function apply_deformation(template_names,target_dir,detailed_output_dir,outdir)
+disp(['Starting to apply deformations'])
 % keyboard
 
 % clear all;
@@ -34,10 +35,13 @@ end
 %%
 % load template
 if save_qc
+    disp('Starting to load templates')
     for c = 1 : length(template_names)
+        disp(['Loaded template ' num2str(c) ' of ' num2str(length(template_names))])
         [xI{c},yI{c},zI{c},I{c},title_,names] = read_vtk_image(template_names{c});
         I{c} = double(I{c});
     end
+    
 end
 
 %%
@@ -49,6 +53,7 @@ end
 
 %%
 % first thing is now to get slice thicknesses and location
+disp('Starting to load slice geometry info')
 geometry_file = dir([target_dir '*.csv']);
 fid = fopen([target_dir geometry_file(1).name],'rt');
 line = fgetl(fid); % ignore the first line
@@ -82,19 +87,21 @@ for f = 1 : length(files)
     xJ{f} = x0J(f,1) + (0:nxJ(f,1)-1)*dxJ(f,1);
     yJ{f} = x0J(f,2) + (0:nxJ(f,2)-1)*dxJ(f,2);
 end
-
+disp('finished loading slice geometry info')
 
 %%
 % get the transforms
 % note that when working with 2 slice types, we'll have to load the
 % combined transforms
-if exist([detailed_output_dir 'combined_A.mat'])
+disp('Starting to load saved data')
+if exist([detailed_output_dir 'combined_A.mat'],'file')
 Avars = load([detailed_output_dir 'combined_A.mat']);
 vvars = load([detailed_output_dir 'combined_v.mat']);    
 else
 Avars = load([detailed_output_dir 'down1_A.mat']);
 vvars = load([detailed_output_dir 'down1_v.mat']);
 end
+disp('Finished loading saved data')
 A = Avars.A;
 AJ = Avars.AJ;
 dxVJ = zeros(length(files),2);
@@ -121,10 +128,12 @@ vJty = vvars.vJty;
 %%
 % now I have to flow the 3D transform
 %% first the deformation
+disp('Starting to integrate velocity field')
 phiinvx = XV;
 phiinvy = YV;
 phiinvz = ZV;
 for t = 1 : nt
+    disp(['Integrating v field step '  num2str(t) ' of ' num2str(nt)])
     % update phi
     Xs = XV - vtx(:,:,:,t)*dt;
     Ys = YV - vty(:,:,:,t)*dt;
@@ -141,7 +150,9 @@ end
 phix = XV;
 phiy = YV;
 phiz = ZV;
+disp('Starting to integrate velocity field backward')
 for t = nt : -1 : 1
+    disp(['Integrating v field step '  num2str(t) ' of ' num2str(nt)])
     % update phi
     Xs = XV + vtx(:,:,:,t)*dt;
     Ys = YV + vty(:,:,:,t)*dt;
@@ -166,18 +177,20 @@ detjac = (phix_x.*(phiy_y.*phiz_z - phiy_z.*phiz_y) ...
     - phix_y.*(phiy_x.*phiz_z - phiy_z.*phiz_x) ...
     + phix_z.*(phiy_x.*phiz_y - phiy_y.*phiz_x))*det(A);
 % write these out
+disp(['Writing out saved transformations and jacobians'])
 if ~exist(outdir,'dir');mkdir(outdir);end;
 write_vtk_image(xV,yV,zV,single(cat(4,Aphix-XV,Aphiy-YV,Aphiz-ZV)),[outdir 'atlas_to_registered_displacement.vtk'],'atlas_to_registered')
 write_vtk_image(xV,yV,zV,single(detjac),[outdir 'atlas_to_registered_detjac.vtk'],'atlas_to_registered_detjac')
 
 % we also want the velocity field
 write_vtk_image(xV,yV,zV,single(permute(cat(5,vtx,vty,vtz),[1,2,3,5,4])),[outdir 'atlas_to_registered_velocity.vtk'],'atlas_to_registered_velocity')
-
+disp(['Finished writing out svaed transformations and jacobians'])
 
 
 %%
 % now I have to loop through slices
 for f = 1 : length(files)
+    disp(['Starting to apply transforms for slice ' num2str(f) ' of ' num2str(length(files))]);
     [dir_,fname_,ext_] = fileparts(files{f});
     % when writing vtk, I'll calculate dx from the "z" variable
     % so we need 2 elements
