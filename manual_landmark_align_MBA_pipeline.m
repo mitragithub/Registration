@@ -387,6 +387,8 @@ inds = varsNtoF.inds;
 save(NtoFfile,'is_nissl','is_fluoro','files','NtoF','inds')
 
 %%
-% after
-% apply_deformation({seg_file,atlas_file}, input_dir, detailed_output_dir, output_dir);
+% after you are finished all the slices, run this code
+% seg_file = '/cis/home/dtward/Documents/ARA/Mouse_CCF/vtk/annotation_50.vtk';
+% atlas_file = '/cis/home/dtward/Documents/ARA/Mouse_CCF/vtk/ara_nissl_50.vtk';
+% apply_deformation({seg_file,atlas_file}, input_dir, [dir_ detailed_postfix '/'], dir_);
 

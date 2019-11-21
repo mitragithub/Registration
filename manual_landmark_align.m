@@ -14,9 +14,9 @@ if nargin == 0
     I = double(I)/255.0;
     J = double(J)/255.0;
     model = 'rigid';
-    model = 'affine';
-    model = 'rigid+spline';
-    model = 'affine+spline';
+%     model = 'affine';
+%     model = 'rigid+spline';
+%     model = 'affine+spline';
 %     keyboard
 end
 
@@ -63,7 +63,7 @@ while 1
     title(hI,'Select point')
     title(hJ,'')
     [qxI,qyI,BUTTON] = ginput(1);
-    if isempty(qxJ) % if you hit enter, its over
+    if isempty(qxI) % if you hit enter, its over
         break
     end
 
