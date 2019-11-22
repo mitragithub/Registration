@@ -12,6 +12,11 @@ function combine_nissl_and_fluoro_transforms(detailed_output_dir)
 varsA = load([detailed_output_dir 'down1_A.mat']);
 varsV = load([detailed_output_dir 'down1_v.mat']);
 varsNtoF = load([detailed_output_dir 'NtoF.mat']);
+if exist([detailed_output_dir 'down1edit_A.mat'],'file')
+    disp(['Using edited files to combine nissl fluoro'])
+    varsA = load([detailed_output_dir 'down1edit_A.mat']);
+    varsV = load([detailed_output_dir 'down1edit_v.mat']);
+end
 
 %%
 % check that we have the right sizes
