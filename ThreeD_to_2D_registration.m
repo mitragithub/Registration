@@ -1715,8 +1715,10 @@ for downloop = 1 : 3
             frame2Gif(frameWeightAll,[prefix 'weightAll.gif']);
             frameIAll = [frameIAll, getframe(6667)];
             frame2Gif(frameIAll,[prefix 'IAll.gif'])
-            frameLabelAll = [frameLabelAll,getframe(4561)];
-            frame2Gif(frameLabelAll,[prefix 'LAll.gif'])
+            if edit_mode
+                frameLabelAll = [frameLabelAll,getframe(4561)];
+                frame2Gif(frameLabelAll,[prefix 'LAll.gif'])
+            end
         end
         
         
