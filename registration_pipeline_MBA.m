@@ -157,7 +157,7 @@ close all;
 
 
 
-
+return
 %%
 % step 4, if desired, is to run in edit mode
 % edit mode is enabled by including segmentations in the ThreeD to 2D, 
@@ -165,4 +165,5 @@ close all;
 % tifs
 % then it will update
 ThreeD_to_2D_registration({atlas_file,seg_file}, input_dir, pattern, config_file, detailed_output_dir)
+combine_nissl_and_fluoro_transforms(detailed_output_dir)
 apply_deformation({seg_file,atlas_file}, input_dir, detailed_output_dir, output_dir);
