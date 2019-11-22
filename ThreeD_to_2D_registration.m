@@ -520,6 +520,9 @@ for downloop = 1 : 3
     frameErrAll = [];
     frameWeightAll = [];
     frameIAll = [];
+    if edit_mode
+        frameLabelAll = [];
+    end
     ERJsave = zeros(length(files),niter);
     Esave = zeros(1,niter);
     EMsave = zeros(1,niter);
@@ -1036,11 +1039,7 @@ for downloop = 1 : 3
                 L_x_ = zeros([size(I_x_),nLJ(f)]);
                 L_y_ = zeros([size(I_x_),nLJ(f)]);
                 for l = 1 : nLJ(f)
-                    try
                     [L_x_(:,:,l) , L_y_(:,:,l) ] = gradient2d(SAphiL{f}(:,:,l),dxJ(1),dxJ(2));
-                    catch
-                        keyboard
-                    end
                 end
             end
             gradAJ = zeros(4,4);
@@ -1079,7 +1078,7 @@ for downloop = 1 : 3
             xJpad = [xJ{f}(1)-dxJ(1), xJ{f}, xJ{f}(end)+dxJ(1)];
             yJpad = [yJ{f}(1)-dxJ(2), yJ{f}, yJ{f}(end)+dxJ(2)];
             if edit_this_slice
-                errLWpad = zeros(nxJ{f}(2)+2, nxJ{f}(1)+2,nL(f));
+                errLWpad = zeros(nxJ{f}(2)+2, nxJ{f}(1)+2,nLJ(f));
                 errLWpad(2:end-1,2:end-1,:) = errLW{f};  
             end
             phiJ1tix = XJ{f};
@@ -1134,7 +1133,7 @@ for downloop = 1 : 3
                     end
                     % matching function gradient
                     gradx = gradx + sum(Lt_x.*lambdat,3);
-                    grady = gradx + sum(Lt_y.*lambdat,3);
+                    grady = grady + sum(Lt_y.*lambdat,3);
                 end
                 
                 % regularization ( I could add more smoothness here if I wanted)
@@ -1304,6 +1303,24 @@ for downloop = 1 : 3
                 else
                     set(hWeightAll(f),'cdata',cat(3,WM{f}.*WMask{f},WA{f}.*WMask{f},WB{f}.*WMask{f}))
                 end
+                
+                % seg matching
+                danfigure(4561);
+                if edit_this_slice
+                    show = (SAphiL{f} - LJ{f})/2 + 0.5;
+                    if size(show,3) > 3
+                        show = show(:,:,1:3);
+                    elseif size(show,3) == 2
+                        show = cat(3,show,show(:,:,1));
+                    end
+                    if it == 1
+                        subplotdan(ceil(sqrt(length(files))),ceil(sqrt(length(files))),f);                        
+                        hLabelAll(f) = imagesc(xJ{f},yJ{f},show,[0,1]);
+                        axis image off;
+                    else
+                        set(hLabelAll(f),'cdata',show)
+                    end
+                end
             end
             
             % one example figure that I can see
@@ -1346,9 +1363,9 @@ for downloop = 1 : 3
             % I could do that above
             
             if edit_this_slice                
-                phiL_x_2d = zeros([size(phiI_x_2d),nL]);
-                phiL_y_2d = zeros([size(phiI_x_2d),nL]);
-                phiL_z_2d = zeros([size(phiI_x_2d),nL]);
+                phiL_x_2d = zeros([size(phiI_x_2d),nLJ(f)]);
+                phiL_y_2d = zeros([size(phiI_x_2d),nLJ(f)]);
+                phiL_z_2d = zeros([size(phiI_x_2d),nLJ(f)]);
                 for l = 1 : nLJ(f)
                     F = griddedInterpolant({yI,xI,zI},phiL_x(:,:,:,channels(l)),'linear','nearest');
                     phiL_x_2d(:,:,l) = F(AiPhiJiAJiY,AiPhiJiAJiX,AiPhiJiAJiZ);
@@ -1510,7 +1527,7 @@ for downloop = 1 : 3
             
         end % of file loop
         
-        keyboard
+        
         % now we start updates for the whole image
         % update A
         e = ([1;1;1;0]*[1,1,1,0]*eLI + [1;1;1;0]*[0,0,0,1]*eTI);
@@ -1554,6 +1571,9 @@ for downloop = 1 : 3
         xpad = [xI(1)-dxI(1),xI,xI(end)+dxI(1)];
         ypad = [yI(1)-dxI(2),yI,yI(end)+dxI(2)];
         zpad = [zI(1)-dxI(3),zI,zI(end)+dxI(3)];
+        if edit_mode
+            gradLpad = padarray(gradL,[1,1,1,0],0,'both');
+        end
         % start my flow
         phi1tinvx = XI;
         phi1tinvy = YI;
@@ -1587,6 +1607,26 @@ for downloop = 1 : 3
             gradx = It_x.*lambdat;
             grady = It_y.*lambdat;
             gradz = It_z.*lambdat;
+            
+            if edit_mode
+                lambdat = zeros([size(lambdat),nL]);
+                for l = 1 : nL
+                    F = griddedInterpolant({ypad,xpad,zpad},gradLpad(:,:,:,l),'linear','nearest');
+                    lambdat(:,:,:,l) = F(phi1tinvy,phi1tinvx,phi1tinvz).*detjac*(-1)/sigmaL^2;
+                end
+                
+                % gradient of It
+                Lt_x = zeros([size(lambdat)]);
+                Lt_y = zeros([size(lambdat)]);
+                Lt_z = zeros([size(lambdat)]);
+                for l = 1 : nLJ(f)
+                    [Lt_x(:,:,:,l),Lt_y(:,:,:,l),Lt_z(:,:,l)] = gradient3d(lambdat(:,:,:,l),dxI(1),dxI(2),dxI(3));
+                end
+                % matching function gradient
+                gradx = gradx + sum(Lt_x.*lambdat,4);
+                grady = grady + sum(Lt_y.*lambdat,4);
+                gradz = gradz + sum(Lt_z.*lambdat,4);
+            end
             
             % regularization ( I could add more smoothness here if I wanted)
             gradx = ifftn(   Kp.*(fftn(gradx).*K + vtxhat(:,:,:,t)/sigmaR^2)   ,'symmetric');
@@ -1675,6 +1715,8 @@ for downloop = 1 : 3
             frame2Gif(frameWeightAll,[prefix 'weightAll.gif']);
             frameIAll = [frameIAll, getframe(6667)];
             frame2Gif(frameIAll,[prefix 'IAll.gif'])
+            frameLabelAll = [frameLabelAll,getframe(4561)];
+            frame2Gif(frameLabelAll,[prefix 'LAll.gif'])
         end
         
         
@@ -1704,7 +1746,7 @@ for downloop = 1 : 3
         % this is the approach used in initialization
         themeanAJ = expm(meanLogAJ);
         % we want to "subtract" the mean from AJ and "add" it to A
-        for i = 1 : size(logmAJ,3)
+        for i = 1 : length(files)
             AJ(:,:,i) = AJ(:,:,i)/themeanAJ; % inverse on the right
         end
         A = [themeanAJ(1,1:2),0,themeanAJ(1,3);
