@@ -2,6 +2,7 @@ function batch_manual_landmark_align_MBA_pipeline(datadir,animalID,faillist)
 % datadir='~/CSHLservers/mitragpu3/disk132/main/RegistrationData/';
 % animalID='PTM849';
 % faillist='~/CSHLservers/mitragpu3/disk132/main/temp/PMD963_failed_qc.txt';
+% faillist=['/Users/bhuo/CSHLservers/qcfiles/',animalID,'.txt'];
 inputdir=[datadir,'/Data/',animalID,'/INPUT_DATA/'];
 outputdir=[datadir,'/Data/',animalID,'/Registration_OUTPUT/'];
 fid=fopen(faillist);
@@ -24,9 +25,12 @@ for i=1:length(qcfilelist)
                 disp(['Skipped ',qcfilename,' due to Nissl failure.'])
             end
         end
+    else
+        qcskip=1; % correct only fluorescent sections
     end
     if qcskip==0
         qcfile=[outputdir,qcfilename,ext];
+        disp(qcfile)
         manual_landmark_align_MBA_pipeline(inputdir,qcfile);
         disp('Done.')
     end
