@@ -1,7 +1,7 @@
 function batch_manual_landmark_align_MBA_pipeline(datadir,animalID,faillist)
 % datadir='~/CSHLservers/mitragpu3/disk132/main/RegistrationData/';
 % animalID='PTM849';
-% faillist='~/CSHLservers/mitragpu3/disk132/main/temp/PMD963_failed_qc.txt';
+% faillist files are in mitramba1:/usr/local/MBA_QC/static/mnt/12
 % faillist=['/Users/bhuo/CSHLservers/qcfiles/',animalID,'.txt'];
 inputdir=[datadir,'/Data/',animalID,'/INPUT_DATA/'];
 outputdir=[datadir,'/Data/',animalID,'/Registration_OUTPUT/'];
