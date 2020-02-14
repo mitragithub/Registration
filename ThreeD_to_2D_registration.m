@@ -1,7 +1,27 @@
 function ThreeD_to_2D_registration(template_name, target_dir, pattern, config_file, output_dir, nonrigid_thick_only)
 % map 3D atlas to 2D slices
 % only use files that match pattern (with wildcards)
-% keyboard
+% In addition to normal registration, we want to have a second pass of
+% registration
+% here we want to incorporate some manually painted labels
+% to do this we will need to have labelled slices as an input
+% and also we'll need to know which atlas label they correspond to
+% let's do this in a simple manner with filenames
+% a label image should be a binary valued tiff
+% it should have the same filename
+% but it should say L for label instead of N for nissl
+% after, we add what labels it should correspond to
+% separated by underscores, so hypens can stil be used to separate parts
+% e.g.
+% PMD1028&1027-N50-2012.04.19-18.40.56_PMD1027_1_0148.tif
+% becomes
+% PMD1028&1027-L50_0_1_2-2012.04.19-18.40.56_PMD1027_1_0148.tif
+% for a binary label that corresponds to CCF 0,1,2
+% we can have another one
+% PMD1028&1027-L50_5-2012.04.19-18.40.56_PMD1027_1_0148.tif
+% for a binary label that corresponds to CCF 5 only
+% we will call this "edit mode"
+% and enable it by inputing template name as a cell array (image, labels)
 tic
 
 
@@ -23,6 +43,16 @@ addpath Functions/gradient
 initializer = [output_dir 'initializer_A.mat'];
 if ~exist(initializer,'file')
     initializer = '';
+end
+
+% edit mode
+% if template is a cell
+edit_mode = 0;
+if iscell(template_name) && length(template_name) ==2
+    edit_mode = 1;
+    label_name = template_name{2};
+    template_name = template_name{1};
+    disp('Edit mode enabled')
 end
 
 
@@ -74,6 +104,59 @@ isthicks = cellfun(@(x) str2num(x), csv_data(:,7)) > thick_cutoff;
 
 
 center = zeros(length(files),2);% this will be for centering my priors, if there is an initializer, it will get updated
+%%
+% for each slice
+% we need a cell array
+
+edit_info = cell(length(files),1);
+if edit_mode
+    
+    % if you are in edit mode, get corresponding label images
+    % note there may be more than one label per image
+    edit_files = dir([target_dir '*-L*_*.tif']);
+    label_strs = {};
+    for f = 1 : length(edit_files)
+        % find the ids and the labels
+        fname = edit_files(f).name;
+        parts = strsplit(fname,'-');
+        % use last four digits to get number
+        num = fname(end-7:end-4);
+        % get the slice id
+        tmp = strfind(files,['_' num '.tif']);
+        slice_id = find(cellfun(@(x) ~isempty(x),tmp),1,'first');
+        % what labels
+        ls = strsplit(parts{2},'_');
+        ls = sort(cellfun(@(x)str2num(x),ls(2:end)));
+        
+        
+        edit_info{slice_id}(end+1) = struct('labels',ls,'filename',fname);
+        
+        label_strs{end+1} = num2str(ls);
+        
+    end
+    
+    
+    
+    % find what labels I'll need to extract in terms of binary images
+    tmp = unique(label_strs);
+    tmp = tmp(cellfun(@(x) ~isempty(x),tmp));
+    label_sets = {};
+    nL = length(tmp);
+    for l = 1 : nL
+        label_sets{l} = sscanf(tmp{l}, '%d');
+    end
+    % loop back through and assign a channel to each label
+    for f = 1 : length(edit_info)
+        for ff = 1 : length(edit_info{f})
+            for fff = 1 : length(label_sets)
+                if length(edit_info{f}(ff).labels) == length(label_sets{fff}) && all(edit_info{f}(ff).labels == label_sets{fff}')
+                    edit_info{f}(ff).channel = fff;
+                end
+            end
+%             
+        end
+    end
+end
 
 %%
 for downloop = 1 : 3
@@ -114,6 +197,17 @@ for downloop = 1 : 3
     I = I - mean(I(:));
     I = I/std(I(:));
     
+    if edit_mode
+        % load labels and construct the one hot image for each set
+        [~,~,~,L_,~,~] = read_vtk_image(label_name);
+        L = zeros(size(L_,1),size(L_,2),size(L_,3),nL);
+        for l = 1 : nL
+            for ll = 1 : length(label_sets{l})
+                L(:,:,:,l) = L(:,:,:,l) | (L_==label_sets{l}(ll));
+            end
+        end
+    end
+    
     if blurI>0
         x_ = [-round(3*blurI):round(3*blurI)];
         [X_,Y_,Z_] = meshgrid(x_);
@@ -134,9 +228,27 @@ for downloop = 1 : 3
         %     I = ifftn(fftn(I).*fftn(K_pad),'symmetric');
         I = tmp((n_(1)-1)/2+1:end-(n_(1)-1)/2, (n_(2)-1)/2+1:end-(n_(2)-1)/2, (n_(3)-1)/2+1:end-(n_(3)-1)/2);
         
+        if edit_mode
+            Lpad = padarray(L,[n_(1)-1,n_(2)-1,n_(3)-1,0]/2,'both');
+            tmp = bsxfun(@times, fft(fft(fft(Lpad,[],1),[],2),[],3), K_pad);
+            tmp = bsxfun(@rdivide,ifft(ifft(ifft(tmp,[],1),[],2),[],3,'symmetric'),Ob);
+            L = tmp((n_(1)-1)/2+1:end-(n_(1)-1)/2, (n_(2)-1)/2+1:end-(n_(2)-1)/2, (n_(3)-1)/2+1:end-(n_(3)-1)/2,:);
+        end
     end
     I = padarray(I,[1,1,1]*downI,-Imean/Istd,'both'); % zero pad (actually with - mean)
     [~,~,~,I] = downsample(1:size(I,2),1:size(I,1),1:size(I,3),I,downI*[1,1,1]);
+    if edit_mode
+        L_ = padarray(L,[1,1,1,0]*downI,0,'both');
+        for l = 1 : nL
+            [~,~,~,tmp] = downsample(1:size(L_,2),1:size(L_,1),1:size(L_,3),L_(:,:,:,l),downI*[1,1,1]);
+            if l == 1
+                L = zeros(size(tmp,1),size(tmp,2),size(tmp,3),nL);
+            end
+            L(:,:,:,l) = tmp;
+        end
+    end
+    
+    
     
     % note this currently assumes zero centered
     dxI = [xI(2)-xI(1), yI(2)-yI(1), zI(2)-zI(1)]*downI;
@@ -179,7 +291,20 @@ for downloop = 1 : 3
 %         subplot(1,2,2);
 %         imagesc(WMask{f})
 %         axis image
-%         keyboard
+
+
+        if edit_mode
+            % load some label files
+            LJ{f} = [];
+            nLJ(f) = 0;
+            if ~isempty(edit_info{f})
+                for ff = 1 : length(edit_info{f})
+                    tmp = double(imread([target_dir edit_info{f}(ff).filename]));
+                    LJ{f}(:,:,ff) = tmp;
+                end
+                nLJ(f) = size(LJ{f},3);
+            end
+        end
         
        
         
@@ -206,6 +331,13 @@ for downloop = 1 : 3
             end
             tmp = ifftn(fftn(Maskpad).*K_pad_hat,'symmetric')./Ob;
             WMask{f} = tmp((n_(1)-1)/2 + 1 : end - (n_(1)-1)/2,(n_(2)-1)/2 + 1 : end - (n_(2)-1)/2);
+            if edit_mode && ~isempty(edit_info{f})
+                LJ_pad = padarray(LJ{f},[n_(1)-1,n_(2)-1,0]/2,'both');
+                for l = 1 : size(LJ{f},3)
+                    tmp = ifftn(fftn(LJ_pad(:,:,l)).*K_pad_hat,'symmetric')./Ob;
+                    LJ{f}(:,:,l) = tmp((n_(1)-1)/2 + 1 : end - (n_(1)-1)/2,(n_(2)-1)/2 + 1 : end - (n_(2)-1)/2);
+                end
+            end
         end
         
         tmp = [];
@@ -214,6 +346,13 @@ for downloop = 1 : 3
         end
         J{f} = tmp;
         [~,~,WMask{f}] = downsample2D(1:size(WMask{f},2),1:size(WMask{f},1),WMask{f},downJ*[1,1]);
+        if edit_mode && ~isempty(edit_info{f})
+            tmp = [];
+            for l = 1 : size(LJ{f},3)
+                [~,~,tmp(:,:,l)] = downsample2D(1:size(LJ{f},2),1:size(LJ{f},1),LJ{f}(:,:,l),downJ*[1,1]);
+            end
+            LJ{f} = tmp;
+        end
         
         
         nxJ{f} = [size(J{f},2),size(J{f},1)];
@@ -346,7 +485,17 @@ for downloop = 1 : 3
         niter = str2double(config.DOWNLOOP3.niter);
 
     end
-    
+    if edit_mode
+        if downloop < 3
+            disp(['running in edit mode only on high res'])
+            continue
+        else
+            sigmaL = 0.1;
+            prefix = [output_dir 'down1edit_'];
+            Afilename = [output_dir 'down1_A.mat'];
+            vfilename = [output_dir 'down1_v.mat'];
+        end
+    end
     
     % hack if stepsizes are too big
     % % I want to reduce them all by 2 since twice as many slices in 787
@@ -371,6 +520,9 @@ for downloop = 1 : 3
     frameErrAll = [];
     frameWeightAll = [];
     frameIAll = [];
+    if edit_mode
+        frameLabelAll = [];
+    end
     ERJsave = zeros(length(files),niter);
     Esave = zeros(1,niter);
     EMsave = zeros(1,niter);
@@ -506,8 +658,22 @@ for downloop = 1 : 3
     normTIstepsave = zeros(1,niter);
     
     [I_x,I_y,I_z] = gradient3d(I,dxI(1),dxI(2),dxI(3),1);
+    if edit_mode
+        L_x = zeros(size(L,1),size(L,2),size(L,3),nL);
+        L_y = zeros(size(L,1),size(L,2),size(L,3),nL);
+        L_z = zeros(size(L,1),size(L,2),size(L,3),nL);
+        for l = 1 : nL
+            [L_x(:,:,:,l),L_y(:,:,:,l),L_z(:,:,:,l)] = gradient3d(L(:,:,:,l),dxI(1),dxI(2),dxI(3),1);
+        end
+    end
+    
+    % if running in edit mode
+    % we should load a saved velocity here and skip the low res versions
+    
+    
 
     for it = 1 : niter
+        
         save_frames = it < 10 || ~mod(it-1,11) || it == niter;
         
         %% first the deformation
@@ -515,11 +681,20 @@ for downloop = 1 : 3
         phiinvy = YI;
         phiinvz = ZI;
         It = repmat(I,[1,1,1,nt]);
+        if edit_mode
+            Lt = repmat(L,[1,1,1,1,nt]);
+        end
         for t = 1 : nt*(it>start_3d_diffeo)
             % deform image
             if t > 1
                 F = griddedInterpolant({yI,xI,zI},I,'linear','nearest');
                 It(:,:,:,t) = F(phiinvy,phiinvx,phiinvz);
+                if edit_mode
+                    for l = 1 : nL
+                        F = griddedInterpolant({yI,xI,zI},L(:,:,:,l),'linear','nearest');
+                        Lt(:,:,:,l,t) = F(phiinvy,phiinvx,phiinvz);
+                    end
+                end
             end
             % update phi
             Xs = XI - vtx(:,:,:,t)*dt;
@@ -566,6 +741,29 @@ for downloop = 1 : 3
         danfigure(333);
         sliceView(xI,yI,zI,phiI)
         
+        if edit_mode
+            phiL = zeros([size(phiI),nL]);
+            phiL_x = zeros([size(phiI),nL]);
+            phiL_y = zeros([size(phiI),nL]);
+            phiL_z = zeros([size(phiI),nL]);
+            for l = 1 : nL
+                F = griddedInterpolant({yI,xI,zI},L(:,:,:,l),'linear','nearest');
+                phiL(:,:,:,l) = F(phiinvy,phiinvx,phiinvz);
+                %         [phiI_x,phiI_y,phiI_z] = gradient3d(phiI,dxI(1),dxI(2),dxI(3));
+                % note this may not be accurate if there are boundary issues
+                F = griddedInterpolant({yI,xI,zI},L_x(:,:,:,l),'linear','nearest');
+                phi_L_x = F(phiinvy,phiinvx,phiinvz);
+                F = griddedInterpolant({yI,xI,zI},L_y(:,:,:,l),'linear','nearest');
+                phi_L_y = F(phiinvy,phiinvx,phiinvz);
+                F = griddedInterpolant({yI,xI,zI},L_z(:,:,:,l),'linear','nearest');
+                phi_L_z = F(phiinvy,phiinvx,phiinvz);
+                
+                phiL_x(:,:,:,l) = phi_L_x.*phiinvx_x + phi_L_y.*phiinvy_x + phi_L_z.*phiinvz_x;
+                phiL_y(:,:,:,l) = phi_L_x.*phiinvx_y + phi_L_y.*phiinvy_y + phi_L_z.*phiinvz_y;
+                phiL_z(:,:,:,l) = phi_L_x.*phiinvx_z + phi_L_y.*phiinvy_z + phi_L_z.*phiinvz_z;
+            end
+        end
+        
         %% next sample onto each slice
         % the sequence of transformations is
         % 1. phi
@@ -578,10 +776,16 @@ for downloop = 1 : 3
         % initialize the gradient. each iteration of the loop wlil add to it
         gradA = zeros(4,4);
         gradI = zeros(size(I));
+        if edit_mode
+            gradL = zeros(size(L));
+        end
         
         for f = 1 : length(files)
             % parfor f = 1 : length(files) % haven't tried yet
-            
+            edit_this_slice = edit_mode && ~isempty(edit_info{f});
+            if edit_this_slice
+                channels = [edit_info{f}.channel];
+            end
             % nonrigid deformation on this slice
             % if it is thick (always)
             % or if you are not using the nonrigid_thick_only option
@@ -592,6 +796,9 @@ for downloop = 1 : 3
             phiJinvx = XJ{f};
             phiJinvy = YJ{f};
             phiJAphiIt = zeros([size(XJ{f}),ntJ]);
+            if edit_this_slice
+                phiJAphiLt = zeros([size(XJ{f}),nLJ(f),ntJ]);
+            end
             
             for t = 1 : ntJ*(it>start_2d_diffeo)*this_slice_nonrigid
                 % sample the image at this point
@@ -611,6 +818,12 @@ for downloop = 1 : 3
                 phiiAiPhiJiZ = F(AiPhiJiY,AiPhiJiX,AiPhiJiZ) + AiPhiJiZ;
                 F = griddedInterpolant({yI,xI,zI},I,'linear','nearest');
                 phiJAphiIt(:,:,t) = F(phiiAiPhiJiY,phiiAiPhiJiX,phiiAiPhiJiZ);
+                if edit_this_slice
+                    for l = 1 : length(channels)
+                        F = griddedInterpolant({yI,xI,zI},L(:,:,:,channels(l)),'linear','nearest');
+                        phiJAphiLt(:,:,l,t) = F(phiiAiPhiJiY,phiiAiPhiJiX,phiiAiPhiJiZ);
+                    end
+                end
                 
                 % update phi
                 Xs = XJ{f} - vJtx{f}(:,:,t)*dtJ;
@@ -635,6 +848,13 @@ for downloop = 1 : 3
             phiiAiPhiJiZ = F(AiPhiJiY,AiPhiJiX,AiPhiJiZ) + AiPhiJiZ;
             F = griddedInterpolant({yI,xI,zI},I,'linear','nearest');
             phiJAphiI = F(phiiAiPhiJiY,phiiAiPhiJiX,phiiAiPhiJiZ);
+            if edit_this_slice
+                phiJAphiL = zeros([size(phiJAphiI),nL]);
+                for l = 1 : nL
+                    F = griddedInterpolant({yI,xI,zI},L(:,:,:,l),'linear','nearest');
+                    phiJAphiL(:,:,l) = F(phiiAiPhiJiY,phiiAiPhiJiX,phiiAiPhiJiZ);
+                end
+            end
             
             % cost
             if size(vJtx{f},3) > 1
@@ -683,7 +903,13 @@ for downloop = 1 : 3
             % now get the image
             F = griddedInterpolant({yI,xI,zI},I,'linear','nearest');
             SAphiI{f} = F(phiiAiPhiJiAJiY,phiiAiPhiJiAJiX,phiiAiPhiJiAJiZ);
-            
+            if edit_this_slice
+                SAphiL{f} = zeros([size(SAphiI{f}),nLJ(f)]);
+                for l = 1 : nLJ(f)
+                    F = griddedInterpolant({yI,xI,zI},L(:,:,:,channels(l)),'linear','nearest');
+                    SAphiL{f}(:,:,l) = F(phiiAiPhiJiAJiY,phiiAiPhiJiAJiX,phiiAiPhiJiAJiZ);
+                end
+            end
             
             %% now contrast mapping
             % basis functions and their derivative
@@ -721,7 +947,7 @@ for downloop = 1 : 3
             
             
             fSAphiI{f} = reshape(D*coeffs{f},size(J{f}));
-            
+
             %%
             % update weights (I need to calculate fSAphiI first)
             % I like updating the weights all the time for the rigid stage
@@ -772,9 +998,13 @@ for downloop = 1 : 3
             
             %% now evaluate errors
             err{f} = fSAphiI{f} - J{f};
+            EMall(f) = sum(sum( sum(err{f}.^2,3).*WM{f}.*WMask{f}))/2/sigmaM^2*prod(dxJ(f,1:2));
             
-            EMall(f) = sum(sum( sum(err{f}.^2,3).*WM{f}.*WMask{f}))/2/sigmaM^2*prod(dxJ(1:2));
-            
+            if edit_this_slice
+                errL{f} = SAphiL{f} - LJ{f};
+                % note LJ{f} is a weight as well as a target
+                EMall(f) = EMall(f) + sum(sum(sum(sum( errL{f}.^2.*LJ{f},3 ) .*WMask{f})))/2/sigmaL^2*prod(dxJ(f,1:2));
+            end
             
             %% now the adjoint with respect to the deformation
             % I is transformed by f as
@@ -789,7 +1019,10 @@ for downloop = 1 : 3
             tmp = sum((DD*coeffs{f}).*reshape(err{f},size(J{f},1)*size(J{f},2),size(J{f},3)),2);
             ferr{f} = reshape(tmp,size(SAphiI{f}));
             ferrW{f} = ferr{f}.*WM{f}.*WMask{f};
-            
+            if edit_this_slice
+                % no contrast transform for the labels
+                errLW{f} = bsxfun(@times,errL{f}.*LJ{f},WMask{f});
+            end            
             %% now evaluate 2D linear transform gradient
             % we have the following cost
             % E = int |f(I(phi^{-1}(A^{-1}(phiJ^{-1}(AJ^{-1}(x)))))) - J(x)|^2 dx
@@ -800,7 +1033,15 @@ for downloop = 1 : 3
             % = int 2(f(I'(AJ^{-1}(x))) - J(x))^T Df(I'(AJ^{-1}(x)))DI'(AJ^{-1}(x))(-1)dA AJ^{-1}x  dx
             % = int 2(f(I'(AJ^{-1}(x))) - J(x))^T Df(I'(AJ^{-1}(x)))D[I'(AJ^{-1}(x))]AJ(-1)dA AJ^{-1}x  dx
             %             [I_x_ , I_y_ ] = gradient(SAphiI{f},dxJ(1),dxJ(2));
+            
             [I_x_ , I_y_ ] = gradient2d(SAphiI{f},dxJ(1),dxJ(2));
+            if edit_this_slice
+                L_x_ = zeros([size(I_x_),nLJ(f)]);
+                L_y_ = zeros([size(I_x_),nLJ(f)]);
+                for l = 1 : nLJ(f)
+                    [L_x_(:,:,l) , L_y_(:,:,l) ] = gradient2d(SAphiL{f}(:,:,l),dxJ(1),dxJ(2));
+                end
+            end
             gradAJ = zeros(4,4);
             AJ_ = [AJf(1:2,1:2),[0;0],AJf(1:2,3);0,0,1,0;0,0,0,1];
             for r = 1 : 2
@@ -810,7 +1051,12 @@ for downloop = 1 : 3
                     Xs_ = Aall(1,1)*XJ{f} + Aall(1,2)*YJ{f} + Aall(1,3)*zJ(f)+ Aall(1,4);
                     Ys_ = Aall(2,1)*XJ{f} + Aall(2,2)*YJ{f} + Aall(2,3)*zJ(f)+ Aall(2,4);
                     tmp = ferrW{f}.*(I_x_.*Xs_ + I_y_.*Ys_);
+                    
                     gradAJ(r,c) = sum(sum(tmp))*prod(dxJ(1:2))*(-1)/sigmaM^2;
+                    if edit_this_slice
+                        tmpL = sum(errLW{f} .* L_x_ ,3).*Xs_ + sum(errLW{f} .* L_y_ ,3).*Ys_;
+                        gradAJ(r,c) = gradAJ(r,c) + sum(sum(tmpL))*prod(dxJ(1:2))*(-1)/sigmaL^2;
+                    end
                 end
             end
             grad_AJ_f = gradAJ(1:3,[1,2,4]);
@@ -828,9 +1074,13 @@ for downloop = 1 : 3
             % using AJ and adjoint of phiJ
             % start my flow
             ferrWpad = zeros(nxJ{f}(2)+2, nxJ{f}(1)+2);
-            ferrWpad(2:end-1,2:end-1) = ferrW{f};
+            ferrWpad(2:end-1,2:end-1) = ferrW{f};            
             xJpad = [xJ{f}(1)-dxJ(1), xJ{f}, xJ{f}(end)+dxJ(1)];
             yJpad = [yJ{f}(1)-dxJ(2), yJ{f}, yJ{f}(end)+dxJ(2)];
+            if edit_this_slice
+                errLWpad = zeros(nxJ{f}(2)+2, nxJ{f}(1)+2,nLJ(f));
+                errLWpad(2:end-1,2:end-1,:) = errLW{f};  
+            end
             phiJ1tix = XJ{f};
             phiJ1tiy = YJ{f};
             detjacJ = ones(size(XJ{f}));
@@ -863,6 +1113,28 @@ for downloop = 1 : 3
                 % matching function gradient
                 gradx = It_x.*lambdat;
                 grady = It_y.*lambdat;
+                
+                if edit_this_slice
+                    warning('updating 2D deformations in edit mode not yet implemented')
+                    % note not tested because MBA does not use slice
+                    % deformation
+                    
+                    lambdat = zeros([size(lambdat),nLJ(f)]);
+                    for l = 1 : nLJ(f)
+                        F = griddedInterpolant({yJpad,xJpad},errLWpad(:,:,l),'linear','nearest');
+                        lambdat(:,:,l) = F(AJphiJ1tinvy,AJphiJ1tinvx).*detjacJ*abs(det(AJf))*(-1)/sigmaL^2;
+                    end
+                    
+                    % gradient of It
+                    Lt_x = zeros([size(lambdat)]);
+                    Lt_y = zeros([size(lambdat)]);
+                    for l = 1 : nLJ(f)
+                        [Lt_x(:,:,l),Lt_y(:,:,l)] = gradient2d(phiJAphiLt(:,:,l,t),dxJ(1),dxJ(2));
+                    end
+                    % matching function gradient
+                    gradx = gradx + sum(Lt_x.*lambdat,3);
+                    grady = grady + sum(Lt_y.*lambdat,3);
+                end
                 
                 % regularization ( I could add more smoothness here if I wanted)
                 gradx = ifftn(   KJp{f}.*(fftn(gradx).*KJ{f} + vJtxhat(:,:,t)/sigmaRJ^2)   ,'symmetric');
@@ -932,10 +1204,8 @@ for downloop = 1 : 3
             if any(isnan(CB{f}))
                 CB{f} = zeros(size(CB{f}));
             end
-%             if strcmp(target_dir,'/cis/home/dtward/Documents/intensity_transform_and_missing_data/csh_slices/Xu2Daniel/PMD1156/')
-%                 pause
-%             end
 
+            
             
             %             % display weights
             %             danfigure(7);
@@ -1033,6 +1303,24 @@ for downloop = 1 : 3
                 else
                     set(hWeightAll(f),'cdata',cat(3,WM{f}.*WMask{f},WA{f}.*WMask{f},WB{f}.*WMask{f}))
                 end
+                
+                % seg matching
+                danfigure(4561);
+                if edit_this_slice
+                    show = (SAphiL{f} - LJ{f})/2 + 0.5;
+                    if size(show,3) > 3
+                        show = show(:,:,1:3);
+                    elseif size(show,3) == 2
+                        show = cat(3,show,show(:,:,1));
+                    end
+                    if it == 1
+                        subplotdan(ceil(sqrt(length(files))),ceil(sqrt(length(files))),f);                        
+                        hLabelAll(f) = imagesc(xJ{f},yJ{f},show,[0,1]);
+                        axis image off;
+                    else
+                        set(hLabelAll(f),'cdata',show)
+                    end
+                end
             end
             
             % one example figure that I can see
@@ -1074,6 +1362,20 @@ for downloop = 1 : 3
             % DI' = D[I(phii(x))] = DI(phii(x))Dphii(x)
             % I could do that above
             
+            if edit_this_slice                
+                phiL_x_2d = zeros([size(phiI_x_2d),nLJ(f)]);
+                phiL_y_2d = zeros([size(phiI_x_2d),nLJ(f)]);
+                phiL_z_2d = zeros([size(phiI_x_2d),nLJ(f)]);
+                for l = 1 : nLJ(f)
+                    F = griddedInterpolant({yI,xI,zI},phiL_x(:,:,:,channels(l)),'linear','nearest');
+                    phiL_x_2d(:,:,l) = F(AiPhiJiAJiY,AiPhiJiAJiX,AiPhiJiAJiZ);
+                    F = griddedInterpolant({yI,xI,zI},phiL_y(:,:,:,channels(l)),'linear','nearest');
+                    phiL_y_2d(:,:,l) = F(AiPhiJiAJiY,AiPhiJiAJiX,AiPhiJiAJiZ);
+                    F = griddedInterpolant({yI,xI,zI},phiL_z(:,:,:,channels(l)),'linear','nearest');
+                    phiL_z_2d(:,:,l) = F(AiPhiJiAJiY,AiPhiJiAJiX,AiPhiJiAJiZ);
+                end
+            end
+            
             gradA_f = zeros(4);
             for r = 1 : 3
                 for c = 1 : 4
@@ -1084,7 +1386,12 @@ for downloop = 1 : 3
                     Zs_ = dA(3,1)*AiPhiJiAJiX + dA(3,2)*AiPhiJiAJiY + dA(3,3)*AiPhiJiAJiZ + dA(3,4);
 
                     tmp = ferrW{f}.*(phiI_x_2d.*Xs_ + phiI_y_2d.*Ys_ + phiI_z_2d.*Zs_);
-                    gradA_f(r,c) = sum(sum(tmp))*prod(dxJ(1:2))*(-1)/sigmaM^2;
+                    gradA_f(r,c) = sum(sum(tmp))*prod(dxJ(f,1:2))*(-1)/sigmaM^2;
+                    
+                    if edit_this_slice
+                        tmp = sum(errLW{f}.*phiL_x_2d,3).*Xs_ + sum(errLW{f}.*phiL_y_2d,3).*Ys_ + sum(errLW{f}.*phiL_z_2d,3).*Zs_;
+                        gradA_f(r,c) = gradA_f(r,c) + sum(sum(tmp))*prod(dxJ(f,1:2))*(-1)/sigmaL^2;
+                    end
                 end
             end
             gradA = gradA + gradA_f;
@@ -1144,11 +1451,16 @@ for downloop = 1 : 3
             
             %         divide by dz to get correct normalization, see note above
             % note padarray is ending up quite slow
-            errpad = zeros(nxJ{f}(2)+2,nxJ{f}(1)+2,3);
+            errpad = zeros(nxJ{f}(2)+2,nxJ{f}(1)+2,3); % 3 is for 3 slices with appropriate zero padding, NOT RGB
             errpad(2:end-1,2:end-1,2) = ferrW{f}/dxI(3);
             xpad = [xJ{f}(1)-dxJ(1), xJ{f}, xJ{f}(end)+dxJ(1)];
             ypad = [yJ{f}(1)-dxJ(2), yJ{f}, yJ{f}(end)+dxJ(2)];
             zpad = zJ(f) + [-1,0,1]*dxI(3); % this will define a triangle function of the appropriate size for slicing
+            
+            if edit_this_slice
+                errLpad = zeros(nxJ{f}(2)+2,nxJ{f}(1)+2,3,nLJ(f));
+                errLpad(2:end-1,2:end-1,2,:) = errLW{f};
+            end
             
             % now how are we gonna sample this?
             % we've got to pull back with AJ, then phiJ, then A
@@ -1205,8 +1517,16 @@ for downloop = 1 : 3
             end
             F = griddedInterpolant({ypad,xpad,zpad},errpad,'linear','nearest');
             gradI = gradI + F(AJphiJAY,AJphiJAX,AJphiJAZ).*detjacslice;
+            if edit_this_slice
+                for l = 1 : nLJ(f)
+                    % map down to used channels          
+                    F = griddedInterpolant({ypad,xpad,zpad},errLpad(:,:,:,l),'linear','nearest');
+                    gradL(:,:,:,channels(l)) = gradL(:,:,:,channels(l)) + F(AJphiJAY,AJphiJAX,AJphiJAZ).*detjacslice;
+                end
+            end
             
         end % of file loop
+        
         
         % now we start updates for the whole image
         % update A
@@ -1251,6 +1571,9 @@ for downloop = 1 : 3
         xpad = [xI(1)-dxI(1),xI,xI(end)+dxI(1)];
         ypad = [yI(1)-dxI(2),yI,yI(end)+dxI(2)];
         zpad = [zI(1)-dxI(3),zI,zI(end)+dxI(3)];
+        if edit_mode
+            gradLpad = padarray(gradL,[1,1,1,0],0,'both');
+        end
         % start my flow
         phi1tinvx = XI;
         phi1tinvy = YI;
@@ -1284,6 +1607,26 @@ for downloop = 1 : 3
             gradx = It_x.*lambdat;
             grady = It_y.*lambdat;
             gradz = It_z.*lambdat;
+            
+            if edit_mode
+                lambdat = zeros([size(lambdat),nL]);
+                for l = 1 : nL
+                    F = griddedInterpolant({ypad,xpad,zpad},gradLpad(:,:,:,l),'linear','nearest');
+                    lambdat(:,:,:,l) = F(phi1tinvy,phi1tinvx,phi1tinvz).*detjac*(-1)/sigmaL^2;
+                end
+                
+                % gradient of It
+                Lt_x = zeros([size(lambdat)]);
+                Lt_y = zeros([size(lambdat)]);
+                Lt_z = zeros([size(lambdat)]);
+                for l = 1 : nLJ(f)
+                    [Lt_x(:,:,:,l),Lt_y(:,:,:,l),Lt_z(:,:,l)] = gradient3d(lambdat(:,:,:,l),dxI(1),dxI(2),dxI(3));
+                end
+                % matching function gradient
+                gradx = gradx + sum(Lt_x.*lambdat,4);
+                grady = grady + sum(Lt_y.*lambdat,4);
+                gradz = gradz + sum(Lt_z.*lambdat,4);
+            end
             
             % regularization ( I could add more smoothness here if I wanted)
             gradx = ifftn(   Kp.*(fftn(gradx).*K + vtxhat(:,:,:,t)/sigmaR^2)   ,'symmetric');
@@ -1372,6 +1715,10 @@ for downloop = 1 : 3
             frame2Gif(frameWeightAll,[prefix 'weightAll.gif']);
             frameIAll = [frameIAll, getframe(6667)];
             frame2Gif(frameIAll,[prefix 'IAll.gif'])
+            if edit_mode
+                frameLabelAll = [frameLabelAll,getframe(4561)];
+                frame2Gif(frameLabelAll,[prefix 'LAll.gif'])
+            end
         end
         
         
@@ -1401,7 +1748,7 @@ for downloop = 1 : 3
         % this is the approach used in initialization
         themeanAJ = expm(meanLogAJ);
         % we want to "subtract" the mean from AJ and "add" it to A
-        for i = 1 : size(logmAJ,3)
+        for i = 1 : length(files)
             AJ(:,:,i) = AJ(:,:,i)/themeanAJ; % inverse on the right
         end
         A = [themeanAJ(1,1:2),0,themeanAJ(1,3);
@@ -1432,7 +1779,7 @@ for downloop = 1 : 3
     
     
     toc
-%     keyboard
+
     
     
 end % of downloop
