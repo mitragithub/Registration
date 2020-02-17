@@ -8,7 +8,7 @@ vtklist=filelsread(['registered_to_atlas_displacement_*',datainfo.staining,'*.vt
 [xA,yA,zA,atlas,title_,names,atlas_spacing] = read_vtk_image(atlas_vtk);
 atlas_spacing=unique(atlas_spacing); % atlas should be isometric
 C=size(INPUTvol,4);
-OUTPUTvol = zeros([size(atlas)*round(datainfo.voxelsize/atlas_spacing),C]);
+OUTPUTvol = zeros([size(atlas)*round(atlas_spacing/datainfo.voxelsize),C]);
 
 % transformed_path = strcat(output_dir, brain_no, '/', tracer, '/');
 
@@ -38,7 +38,7 @@ for j = 1:count2
         %% transform.m
         
         % get its pixel size in um
-        dxhigh = [voxsize,voxsize];
+        dxhigh = [datainfo.voxelsize,datainfo.voxelsize];
         
         
         % get the number of pixels
