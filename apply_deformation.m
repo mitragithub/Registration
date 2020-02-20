@@ -1,36 +1,23 @@
 function apply_deformation(template_names,target_dir,detailed_output_dir,outdir)
 disp(['Starting to apply deformations'])
-% keyboard
 
-% clear all;
-% close all;
-% fclose all;
+% TODO: if transform is rigid, apply it using matrix, and instead of
+% interpolation do translation, and rotation via shear
 
-% these files should be distributed along
-% addpath /cis/home/dtward/Functions/plotting
-% addpath /cis/home/dtward/Functions/vtk
 addpath Functions/plotting
 addpath Functions/vtk
-
 
 
 rng(1);
 colors = rand(256,3);
 
-%%
-% input files
-% name = 'v20_711';
-% target_dir = '/cis/home/dtward/Documents/intensity_transform_and_missing_data/csh_slices/toDaniel/MD711/';
-% outdir = 'registered_v02_711/';
-% the full res template
-% this is just for making pictures
-% res = 50;
-% template_name = ['/cis/home/dtward/Documents/ARA/Mouse_CCF/vtk/annotation_' num2str(res) '.vtk'];
+
 if isempty(template_names)
     save_qc = 0;
 else
     save_qc = 1;
 end
+
 
 %%
 % load template
@@ -184,7 +171,7 @@ write_vtk_image(xV,yV,zV,single(detjac),[outdir 'atlas_to_registered_detjac.vtk'
 
 % we also want the velocity field
 write_vtk_image(xV,yV,zV,single(permute(cat(5,vtx,vty,vtz),[1,2,3,5,4])),[outdir 'atlas_to_registered_velocity.vtk'],'atlas_to_registered_velocity')
-disp(['Finished writing out svaed transformations and jacobians'])
+disp(['Finished writing out saved transformations and jacobians'])
 
 
 %%
@@ -225,6 +212,10 @@ for f = 1 : length(files)
 %     danfigure(1);
 %     imagesc(xJ{f},yJ{f},J)
 %     axis image
+
+    % let's normalize it
+    % dividing by 255 is not good enough
+    
 
     %%
     % first apply the 2D affine
@@ -432,6 +423,8 @@ for f = 1 : length(files)
     
 %     %%
     % now we want a deformation that includes straightening
+    qlim = [0.01,0.99];
+
     if save_qc
         for t = 1 : length(template_names)
             % if the template is an allen annotation, we do it with
@@ -458,6 +451,9 @@ for f = 1 : length(files)
                 %             imagesc(xJ{f},yJ{f},SegRGB*segalpha + Jrecon*(1-segalpha))
                 % plot the contour instead
                 Jshow = Jrecon;
+                tmp = mean(Jshow,3);
+                clim = quantile(tmp(:),qlim);
+                Jshow = (Jshow - clim(1))/diff(clim);
                 for c = 1 : 3
                     tmp = Jshow(:,:,c);
                     tmp(Seg_contour~=0) = 1;
@@ -484,7 +480,6 @@ for f = 1 : length(files)
 %                 J2 = J2 - min(J2(:));
 %                 J2 = J2 / (max(J2(:)) - min(J2(:)));
   
-                qlim = [0.01,0.99];
                 J1 = mean(Jrecon,3);
                 clim = quantile(J1(:),qlim);
                 J1 = (J1 - clim(1))/diff(clim);
