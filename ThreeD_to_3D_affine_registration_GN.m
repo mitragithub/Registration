@@ -99,6 +99,8 @@ for downloop = 1 : length(downs)
         Zs = Ai(3,1)*XJ + Ai(3,2)*YJ + Ai(3,3)*ZJ + Ai(3,4);
         F = griddedInterpolant({yI,xI,zI},I,'linear','nearest');
         AI = F(Ys,Xs,Zs);
+        
+        
         danfigure(3);
         sliceView(xJ,yJ,zJ,AI)
         
