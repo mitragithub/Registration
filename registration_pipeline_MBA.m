@@ -68,6 +68,10 @@ if nargin == 0
     % go back to case 1, tro to enable edit mode
     input_dir = '/cis/home/dtward/Documents/intensity_transform_and_missing_data/csh_slices/Registration/PMD1027_case1_data/INPUT_DATA/'
     output_dir = 'PMD1027_case1_data/OUTPUT/'
+    
+    %     
+    input_dir = '/cis/home/dtward/Documents/intensity_transform_and_missing_data/csh_slices/Registration/PMD3344/INPUT_DATA/'
+    output_dir = '/cis/home/dtward/Documents/intensity_transform_and_missing_data/csh_slices/Registration/PMD3344/OUTPUT/'
 
     
     % ideally this step should be done before hand
