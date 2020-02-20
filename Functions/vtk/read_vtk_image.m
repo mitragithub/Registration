@@ -172,7 +172,7 @@ while 1
     elseif strcmp(dtype,'float')
         dtype_matlab = 'single';
     elseif strcmp(dtype,'double')
-        dtype_matlab = double;
+        dtype_matlab = 'double';
     end
     
     if ~isempty(R)
@@ -202,6 +202,7 @@ while 1
         I{end} = reshape(I{end},dimensions);
         I{end} = permute(I{end},[2,1,3]); % switch x-y to row-col for matlab
     elseif strcmp(TYPE,'VECTORS')
+%         keyboard
         I{end+1} = fread(fid,n_datapoints*3,dtype_matlab);
         I{end} = reshape(I{end},[3,dimensions]);
         I{end} = permute(I{end},[2,3,4,1]); % put components last
