@@ -92,9 +92,7 @@ muA = cat(3,1,1,1);
 %%
 A = A0;
 Ai = inv(A);
-% downsample
-ndraw = 11;
-% ndraw = 1;
+ndraw = 21;
 for downloop = 1 : length(downs)
     d = downs(downloop);
 
