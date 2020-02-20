@@ -1536,7 +1536,8 @@ for downloop = 1 : 3
         end
         Asave = [Asave,A(:)];
         
-        danfigure(46);
+        paramfig = 46;
+        danfigure(paramfig);
         subplot(2,2,1)
         plot(Asave([1,2,3,5,6,7,9,10,11],:)')
         title('Linear')
@@ -1659,7 +1660,8 @@ for downloop = 1 : 3
         Esave(it) = E;
         subplot(2,2,3)
         plot([EMsave(1:it);ERsave(1:it);sum(ERJsave(:,1:it),1);Esave(1:it)]');
-        saveas(gcf,[prefix 'energy.png'])
+
+        saveas(paramfig,[prefix 'energy.png'])
         disp(['Iter: ' num2str(it) ', energy: ' num2str(E) ', matching energy: ' num2str(EM) ', reg energy: ' num2str(ER) ', regJ energy: ' num2str(sum(ERJ))] )
         
         %%
