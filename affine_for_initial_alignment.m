@@ -3,6 +3,7 @@ function affine_for_initial_alignment(atlas_file, input_dir, pattern, detailed_o
 % construct 3D volume from initializer
 % do affine, and update initializer
 
+
 addpath Functions/plotting
 addpath Functions/downsample
 addpath Functions/vtk
@@ -76,9 +77,19 @@ for i = 1 : length(files)
     colormap gray;
     
     if i == 1
-        J = zeros([round(max(nxJ0/3/mindown)), round((zJ0(end)-zJ0(1))/50/mindown)]);
-        O = zeros(size(J));
+        % typically we expect more slices than 50 micron spacing
+        nslices = round((zJ0(end)-zJ0(1))/50/mindown);
+        J = zeros([round(max(nxJ0/3/mindown)), nslices]);
         zJ = (0 : size(J,3)-1)*50*mindown;
+        if nslices > length(files)
+            nslices = length(files);
+            J = zeros([round(max(nxJ0/3/mindown)), nslices]);            
+            dz = (zJ0(end) - zJ0(1))/nslices;
+            zJ = (0 : size(J,3)-1)*dz;
+        end
+        
+        
+        O = zeros(size(J));
         zJ = zJ - mean(zJ);
         xJ = (0 : size(J,2)-1)*(xJ_(2)-xJ_(1)); xJ = xJ - mean(xJ);
         yJ = (0 : size(J,1)-1)*(yJ_(2)-yJ_(1)); yJ = yJ - mean(yJ);
@@ -178,8 +189,5 @@ I = I - mean(I(:));
 I = I/std(I(:));
 
 
-% not using gradient descent
-% A = ThreeD_to_3D_affine_registration(xI,yI,zI,I,xJ,yJ,zJ,Jnorm,A,downs/mindown,niter,eT_factor,eL_factor);
-% using gauss newton instead
-A = ThreeD_to_3D_affine_registration_GN(xI,yI,zI,I,xJ,yJ,zJ,Jnorm,A,downs/mindown,niter);
+A = ThreeD_to_3D_affine_registration_GN(xI,yI,zI,I,xJ,yJ,zJ,Jnorm,A,downs/mindown,niter,0.25);
 save([detailed_output_dir 'initializer_A.mat'],'AJ','A');
