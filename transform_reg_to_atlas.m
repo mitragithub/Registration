@@ -1,4 +1,6 @@
 % Feb 2020, converted into function from apply_transform_to_summary_data.m by Daniel Tward
+% each 10um transformation takes 15-20min
+% profile is available at https://www.dropbox.com/sh/8k4xn8ooaqjyrma/AACgzyW9bz4gakluhy-TBw-la?dl=0
 function phiJ=transform_reg_to_atlas(INPUTvol,INPUTspacing,geometry_file,deformation_file,atlas_vtk,output_name)
 % % the resolution of the image in registered space is 10x10x20
 % clear all;
@@ -20,8 +22,8 @@ function phiJ=transform_reg_to_atlas(INPUTvol,INPUTspacing,geometry_file,deforma
 dz0 = INPUTspacing(3); % expected slice sampling interval
 dx0 = INPUTspacing(1);
 % output_name = 'data_registered_to_atlas.vtk';
-output_title = 'data_registered_to_atlas';
-
+% output_title = 'data_registered_to_atlas';
+tic;
 
 
 % we will load the atlas to get a set of sample points for the output data
@@ -52,6 +54,7 @@ while 1
     end
     z = [z,str2num(data{10})];
 end
+fclose(fid);
 %%
 % 2. load reconstructed volume, accounting for missing slices
 % vars = load(image_file); % this takes a really long time, probably there is some compression/decompression
@@ -65,7 +68,7 @@ nslice = size(INPUTvol,3); % it is 255, same as the length of z
 % find where ther are gaps
 dz = diff(z);
 inds = (z-z(1))/dz0+1;
-% 
+%
 % figure;
 % imagesc(squeeze(sum(INPUTvol,3)))
 
@@ -132,7 +135,7 @@ phi = deltaphi + cat(4,XI,YI,ZI);
 zI_ = zI_(1) : dx0 : zI_(end); % convert into isotropic
 xI_ = xI_(1) : dx0 : xI_(end);
 yI_ = yI_(1) : dx0 : yI_(end);
-%%
+%% this is the time consuming part
 [XI_,YI_,ZI_] = meshgrid(xI_,yI_,zI_);
 % resample phi
 phi_ = zeros([size(XI_),3]);
@@ -151,8 +154,13 @@ phiJ(isnan(phiJ)) = 0;
 if nargin>5 % save
     disp(['Saving ',output_name,'...'])
     neurondensityatlas=phiJ;
-    save([output_name,'.mat'],'neurondensityatlas','-v7.3')
+    if exist([output_name,'.mat'],'file')
+        save([output_name,'.mat'],'neurondensityatlas','-append')
+    else
+        save([output_name,'.mat'],'neurondensityatlas','-v7.3')
+    end
     % write out in vtk format, here I will use single precision to save disk
-    write_vtk_image(xI_,yI_,zI_,single(phiJ),[output_name,'.vtk'],output_title,names)
-    disp(['Saved.'])
+    %     write_vtk_image(xI_,yI_,zI_,single(phiJ),[output_name,'.vtk'],output_title,names)
+    disp('Saved.')
+    toc;
 end

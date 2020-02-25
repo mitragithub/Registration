@@ -169,7 +169,7 @@ while 1
     elseif strcmp(dtype,'float')
         dtype_matlab = 'single';
     elseif strcmp(dtype,'double')
-        dtype_matlab = double;
+        dtype_matlab = 'double';
     end
     
     if ~isempty(R)
