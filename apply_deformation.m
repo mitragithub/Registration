@@ -1,9 +1,27 @@
 function apply_deformation(template_names,target_dir,detailed_output_dir,outdir)
+
+
 disp(['Starting to apply deformations'])
 
 % TODO: if transform is rigid, apply it using matrix, and instead of
 % interpolation do translation, and rotation via shear
-
+% NOTE: we apply a sequence of transformations to get from 3D atlas to 2D
+% data
+% x -> AJ . phiJ . A . phi . x
+% originally we wanted to factor it as follows
+% [AJ . phiJ] is registered to input
+% [A . phi] is atlas to registered
+% Instead, for each slice J we factored A into two parts
+% say this introduces another linear transform B
+% [AJ . phiJ . B] is registered to input
+% [B^{-1} . A . phi] is atlas to registered
+% the problem is that B depends on the slice
+%
+% I modeled this as a rotation and shift
+% the rotation makes sure we are vertical
+% the shift sort of undoes any shear component in the affine
+% the rotation component is the SAME ON EVERY SLICE
+% the SHIFT COMPONENT IS LINEAR IN Z
 addpath Functions/plotting
 addpath Functions/vtk
 
@@ -145,11 +163,11 @@ for t = nt : -1 : 1
     Ys = YV + vty(:,:,:,t)*dt;
     Zs = ZV + vtz(:,:,:,t)*dt;
     % subtract and add identity
-    F = griddedInterpolant({yV,xV,zV},phiinvx-XV,'linear','nearest');
+    F = griddedInterpolant({yV,xV,zV},phix-XV,'linear','nearest');
     phix = F(Ys,Xs,Zs) + Xs;
-    F = griddedInterpolant({yV,xV,zV},phiinvy-YV,'linear','nearest');
+    F = griddedInterpolant({yV,xV,zV},phiy-YV,'linear','nearest');
     phiy = F(Ys,Xs,Zs) + Ys;
-    F = griddedInterpolant({yV,xV,zV},phiinvz-ZV,'linear','nearest');
+    F = griddedInterpolant({yV,xV,zV},phiz-ZV,'linear','nearest');
     phiz = F(Ys,Xs,Zs) + Zs;
 end
 Aphix = A(1,1)*phix + A(1,2)*phiy + A(1,3)*phiz + A(1,4);
@@ -166,17 +184,83 @@ detjac = (phix_x.*(phiy_y.*phiz_z - phiy_z.*phiz_y) ...
 % write these out
 disp(['Writing out saved transformations and jacobians'])
 if ~exist(outdir,'dir');mkdir(outdir);end;
-write_vtk_image(xV,yV,zV,single(cat(4,Aphix-XV,Aphiy-YV,Aphiz-ZV)),[outdir 'atlas_to_registered_displacement.vtk'],'atlas_to_registered')
+% don't use this data for atlas to registered, the code below incorporates
+% corrections that center the data for display in the MBA portal
+% write_vtk_image(xV,yV,zV,single(cat(4,Aphix-XV,Aphiy-YV,Aphiz-ZV)),[outdir 'atlas_to_registered_displacement.vtk'],'atlas_to_registered')
 write_vtk_image(xV,yV,zV,single(detjac),[outdir 'atlas_to_registered_detjac.vtk'],'atlas_to_registered_detjac')
 
 % we also want the velocity field
 write_vtk_image(xV,yV,zV,single(permute(cat(5,vtx,vty,vtz),[1,2,3,5,4])),[outdir 'atlas_to_registered_velocity.vtk'],'atlas_to_registered_velocity')
 disp(['Finished writing out saved transformations and jacobians'])
 
+%%
+% update atlas to registered based on in-plane shifts that were calculated
+% to center data for display
+% this section corrects for angle, and xz and yz shear
+
+% the rotation component is like this
+% unit vector up
+v = [1;0;0;0];
+% what happens to unit vector
+Av = A*v;
+% so we want B or Axy to do two things
+% correct this translation (in xy)
+% and create this rotation (y component)
+theta = atan2(-Av(1),Av(2));
+% what rotation corresponded to this?
+R = [cos(theta),-sin(theta),0,0;
+    sin(theta),cos(theta),0,0;
+    0,0,1,0;
+    0,0,0,1];
+% and we also had a shift that depended on z linearly
+%   
+u0 = [0;0;zJ(f);1]; % what slice am I on?
+v0 = A\u0; % where does this appear in the atlas
+zatlas = v0(3); % what z location does it appear?
+% look at Pz
+Pz = [0,0,0,0;
+    0,0,0,0;
+    0,0,1,0;
+    0,0,0,1];
+Pxy = [1,0,0,0;
+    0,1,0,0;
+    0,0,0,0;
+    0,0,0,1];
+% the first two componets are the same as the shift above
+% the problem is this is definitely not invertible
+% the goal here is to add a z depending xy shift
+SHIFT = (Pxy * A * Pz * inv(A) * Pz);
+% the problem here is that we have zeros outside of xy
+% but I think we should have identity?
+% so I need to think about how to write this shift
+% a point has two shifts, one independent of z and one that depends on z
+% I think we just need to set its diagonals to 1
+SHIFT(1,1) = 1;
+SHIFT(2,2) = 1;
+SHIFT(3,3) = 1;
+
+% update A and AJ
+A_ = inv(R)*inv(SHIFT)*A;
+AJ_ = zeros(size(AJ));
+for i = 1 : size(AJ,3)
+    SHIFTz = eye(3);
+    SHIFTz(1,3) = SHIFT(1,4) + SHIFT(1,3)*zJ(i);
+    SHIFTz(2,3) = SHIFT(2,4) + SHIFT(2,3)*zJ(i);
+    AJ_(:,:,i) = AJ(:,:,i) * SHIFTz * R([1,2,4],[1,2,4]) ;
+end
+
+
+A_phix = A_(1,1)*phix + A_(1,2)*phiy + A_(1,3)*phiz + A_(1,4);
+A_phiy = A_(2,1)*phix + A_(2,2)*phiy + A_(2,3)*phiz + A_(2,4);
+A_phiz = A_(3,1)*phix + A_(3,2)*phiy + A_(3,3)*phiz + A_(3,4);
+write_vtk_image(xV,yV,zV,single(cat(4,A_phix-XV,A_phiy-YV,A_phiz-ZV)),[outdir 'atlas_to_registered_displacement.vtk'],'atlas_to_registered')
+
+
+
 
 %%
 % now I have to loop through slices
-for f = 1 : length(files)
+for f = 1 : 1 : length(files)
     disp(['Starting to apply transforms for slice ' num2str(f) ' of ' num2str(length(files))]);
     [dir_,fname_,ext_] = fileparts(files{f});
     % when writing vtk, I'll calculate dx from the "z" variable
@@ -430,11 +514,13 @@ for f = 1 : length(files)
             % if the template is an allen annotation, we do it with
             % outlines
             
-%             segalpha = 0.25;
+            % if the template is waxholm annotation, we do it with outlines
+            
             
             
             danfigure(5);
-            if ~isempty(strfind(template_names{t},'annotation'))
+            [thedir_,thename_,theext_] = fileparts(template_names{t});
+            if ~isempty(strfind(template_names{t},'annotation')) || ~isempty(strfind(thename_,'rat_atlas'))
                 
                 F = griddedInterpolant({yI{t},xI{t},zI{t}},I{t},'nearest','nearest');
                 Seg = F(phiiAxyziPhiJiAJiY, phiiAxyziPhiJiAJiX, phiiAxyziPhiJiAJiZ);
@@ -461,6 +547,12 @@ for f = 1 : length(files)
                     Jshow(:,:,c) = tmp;
                 end
                 imagesc(xJ{f},yJ{f},Jshow)
+%                 out = [];
+%                 for c = 1 : size(Jrecon,3)
+%                 out(:,:,c,:) = label_to_color_boundary(Jrecon(:,:,c),Seg,1,1);
+%                 end
+%                 % need to diagonalize
+                
                 
             else
                 
@@ -499,6 +591,12 @@ for f = 1 : length(files)
             xlabel x;
             ylabel y;
             set(gca,'xlim',6000*[-1,1],'ylim',5000*[-1 1]);
+            if  ~isempty(strfind(thename_,'rat'))
+                % update for rat
+                
+                set(gca,'xlim',9000*[-1,1],'ylim',8000*[-1 1]);
+
+            end
             [directory_, filename_, extension_] = fileparts(files{f});
             saveas(5,[outdir filename_ '_preview_' num2str(t) '_straight.png'])
         end
@@ -535,6 +633,8 @@ for f = 1 : length(files)
     write_vtk_image(xJ{f},yJ{f},zJ,single(distortion),[outdir 'atlas_to_registered_detjac_' fname_ '.vtk'],'atlas_to_registered_detjac')
 
     
+
+    
     
     %%
     
@@ -542,3 +642,4 @@ for f = 1 : length(files)
 
     
 end % of loop over files
+

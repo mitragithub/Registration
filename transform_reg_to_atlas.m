@@ -132,24 +132,34 @@ phi = deltaphi + cat(4,XI,YI,ZI);
 % and downsampling the z
 [xI_,yI_,zI_,I_,title_,names] = read_vtk_image(atlas_vtk);
 % zI_ = zI_(1) : dz0 : zI_(end);
-zI_ = zI_(1) : dx0 : zI_(end); % convert into isotropic
-xI_ = xI_(1) : dx0 : xI_(end);
-yI_ = yI_(1) : dx0 : yI_(end);
+% dxtarget=25;
+% zI_ = zI_(1) : dxtarget : zI_(end); % convert into isotropic
+% xI_ = xI_(1) : dxtarget : xI_(end);
+% yI_ = yI_(1) : dxtarget : yI_(end);
 %% this is the time consuming part
-[XI_,YI_,ZI_] = meshgrid(xI_,yI_,zI_);
+[XI_,YI_,ZI_] = meshgrid(xI_,yI_,zI_); % target space
 % resample phi
-phi_ = zeros([size(XI_),3]);
+phi_=cell(3,1); % each color channel is saved in one cell
 for c = 1 : 3
+    phi_{c} = zeros(size(XI_));
     F = griddedInterpolant({yI,xI,zI},phi(:,:,:,c),'linear','nearest');
-    phi_(:,:,:,c) = F(YI_,XI_,ZI_);
+    phi_{c} = F(YI_,XI_,ZI_); % evaluate phi at each point in target space
 end
 % transform data
-phiJ = zeros([size(phi_,1),size(phi_,2),size(phi_,3),size(INPUTvol,4)]);
+phiJ=cell(3,1);
 for c = 1 : size(INPUTvol,4)
+    tic;
+    phiJ{c} = zeros(size(phi_{1}));
+    if sum(sum(sum(INPUTvol(:,:,:,c))))>0
     F = griddedInterpolant({yJ,xJ,zJ},INPUTvol(:,:,:,c),'linear','none');
-    phiJ(:,:,:,c) = F(phi_(:,:,:,2),phi_(:,:,:,1),phi_(:,:,:,3));
+    phiJ{c} = F(phi_{2},phi_{1},phi_{3});
+    phiJ{c}(isnan(phiJ{c})) = 0;
+    end
+    toc;
 end
-phiJ(isnan(phiJ)) = 0;
+phiJ1=cat(4,phiJ{1},phiJ{2},phiJ{3});
+phiJ=phiJ1;
+clear phiJ1
 %%
 if nargin>5 % save
     disp(['Saving ',output_name,'...'])
