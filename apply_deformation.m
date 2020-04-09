@@ -1,6 +1,5 @@
 function apply_deformation(template_names,target_dir,detailed_output_dir,outdir)
 
-
 disp(['Starting to apply deformations'])
 
 % TODO: if transform is rigid, apply it using matrix, and instead of
@@ -90,7 +89,7 @@ dzJ = cellfun(@(x) str2num(x), csv_data(:,7));
 
 for f = 1 : length(files)
     xJ{f} = x0J(f,1) + (0:nxJ(f,1)-1)*dxJ(f,1);
-    yJ{f} = x0J(f,2) + (0:nxJ(f,2)-1)*dxJ(f,2);
+    yJ{f} = x0J(f,2) + (0:nxJ(f,2)-1)*dxJ(f,2);    
 end
 disp('finished loading slice geometry info')
 
