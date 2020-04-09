@@ -193,7 +193,6 @@ disp(['Finished writing out saved transformations and jacobians'])
 % to center data for display
 % this section corrects for angle, and xz and yz shear
 
-
 % unit vector up
 v = [1;0;0;0];
 % what happens to unit vector
@@ -589,11 +588,7 @@ for f = 1 : 1 : length(files)
     write_vtk_image(xJ{f},yJ{f},zJ,single(distortion),[outdir 'atlas_to_registered_detjac_' fname_ '.vtk'],'atlas_to_registered_detjac')
 
     
-
-    
-    
     %%
-    
     drawnow;
 
     
