@@ -47,12 +47,15 @@ addpath Functions/downsample
 % I = mean(I,3);
 % J = mean(J,3);
 
+qlim = [0.01,0.99];
+climI = quantile(I(:),qlim);
+climJ = quantile(J(:),qlim);
 danfigure(1);
 imagesc(xI,yI,I)
 axis image
 
 danfigure(2);
-imagesc(xJ,yJ,J)
+imagesc(xJ,yJ,(J-climJ(1))/diff(climJ))
 axis image
 
 CI = size(I,3);
@@ -141,6 +144,8 @@ for downloop = 1 : length(downs)
         
         E = sum(err(:).^2)/2*prod(dxJd);
         
+        
+        
         if ~mod(it-1,ndraw) || it == niter(downloop)
             danfigure(1);
         imagesc(xId,yId,Id)
@@ -148,7 +153,7 @@ for downloop = 1 : length(downs)
         title('I')
         
         danfigure(2);
-        imagesc(xJd,yJd,Jd)
+        imagesc(xJd,yJd,(Jd-climJ(1))/diff(climJ))
         axis image
         title('J')
         
@@ -158,11 +163,11 @@ for downloop = 1 : length(downs)
         title('AI')
         
         danfigure(4);
-        imagesc(xJd,yJd,fAId);
+        imagesc(xJd,yJd,(fAId-climJ(1))/diff(climJ));
         axis image
         title('fAI')
         danfigure(5);
-        imagesc(xJd,yJd,err/2.0 + 0.5)
+        imagesc(xJd,yJd,err/2.0/diff(climJ) + 0.5)
         axis image
         title('err')
         disp(['Iteration ' num2str(it) '/' num2str(niter(downloop)) ', energy ' num2str(E)]);

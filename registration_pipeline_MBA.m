@@ -73,6 +73,12 @@ if nargin == 0
     input_dir = '/cis/home/dtward/Documents/intensity_transform_and_missing_data/csh_slices/Registration/PMD3344/INPUT_DATA/'
     output_dir = '/cis/home/dtward/Documents/intensity_transform_and_missing_data/csh_slices/Registration/PMD3344/OUTPUT/'
 
+    % xu said there were problems with 3344, but I didn't see any
+    
+%     % next problematic case was 1969
+%     input_dir = '/cis/home/dtward/Documents/intensity_transform_and_missing_data/csh_slices/Registration/PMD1969/INPUT_DATA/'
+%     output_dir = '/cis/home/dtward/Documents/intensity_transform_and_missing_data/csh_slices/Registration/PMD1969/OUTPUT/'
+    
     
     % ideally this step should be done before hand
 %     create_location_csv_MBA(input_dir, 14.72, 14.72, 20)
@@ -138,7 +144,6 @@ for f = 1 : length(files)
 end
 
 align_fluoro_to_nissl(input_dir, nissl_pattern, fluoro_pattern, detailed_output_dir);
-% align_fluoro_to_nissl_savepics_3317(input_dir, nissl_pattern, fluoro_pattern, detailed_output_dir);
 close all;
 
 
@@ -156,9 +161,10 @@ combine_nissl_and_fluoro_transforms(detailed_output_dir)
 %%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % step 3 is to generate standard vtk outputs
+tic
 apply_deformation({seg_file,atlas_file}, input_dir, detailed_output_dir, output_dir);
 close all;
-
+toc
 
 
 return

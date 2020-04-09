@@ -1,4 +1,4 @@
-function registration_pipeline_nissl_fluoro_v3_rigid(atlas_file,input_dir,config_file,detailed_output_dir,output_dir,seg_file)
+function registration_pipeline_nissl_fluoro(atlas_file,input_dir,config_file,detailed_output_dir,output_dir,seg_file)
 % run the rna seq mapping pipeline
 % 1. specify filename for vtk atlas
 % 2. specify directory for input images at 15 um

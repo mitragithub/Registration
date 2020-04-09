@@ -188,6 +188,7 @@ if ~exist(outdir,'dir');mkdir(outdir);end;
 % corrections that center the data for display in the MBA portal
 % write_vtk_image(xV,yV,zV,single(cat(4,Aphix-XV,Aphiy-YV,Aphiz-ZV)),[outdir 'atlas_to_registered_displacement.vtk'],'atlas_to_registered')
 write_vtk_image(xV,yV,zV,single(detjac),[outdir 'atlas_to_registered_detjac.vtk'],'atlas_to_registered_detjac')
+% note this additional transform is a shear so does not impact detjac
 
 % we also want the velocity field
 write_vtk_image(xV,yV,zV,single(permute(cat(5,vtx,vty,vtz),[1,2,3,5,4])),[outdir 'atlas_to_registered_velocity.vtk'],'atlas_to_registered_velocity')
@@ -254,6 +255,8 @@ A_phix = A_(1,1)*phix + A_(1,2)*phiy + A_(1,3)*phiz + A_(1,4);
 A_phiy = A_(2,1)*phix + A_(2,2)*phiy + A_(2,3)*phiz + A_(2,4);
 A_phiz = A_(3,1)*phix + A_(3,2)*phiy + A_(3,3)*phiz + A_(3,4);
 write_vtk_image(xV,yV,zV,single(cat(4,A_phix-XV,A_phiy-YV,A_phiz-ZV)),[outdir 'atlas_to_registered_displacement.vtk'],'atlas_to_registered')
+
+
 
 
 
