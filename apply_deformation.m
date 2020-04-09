@@ -14,13 +14,8 @@ disp(['Starting to apply deformations'])
 % say this introduces another linear transform B
 % [AJ . phiJ . B] is registered to input
 % [B^{-1} . A . phi] is atlas to registered
-% the problem is that B depends on the slice
-%
-% I modeled this as a rotation and shift
-% the rotation makes sure we are vertical
-% the shift sort of undoes any shear component in the affine
-% the rotation component is the SAME ON EVERY SLICE
-% the SHIFT COMPONENT IS LINEAR IN Z
+% B depends on the slice (linear in z)
+
 addpath Functions/plotting
 addpath Functions/vtk
 
@@ -53,7 +48,6 @@ end
 if ~exist(outdir,'dir')
     mkdir(outdir)
 end
-
 
 %%
 % first thing is now to get slice thicknesses and location
@@ -92,6 +86,7 @@ for f = 1 : length(files)
     yJ{f} = x0J(f,2) + (0:nxJ(f,2)-1)*dxJ(f,2);    
 end
 disp('finished loading slice geometry info')
+
 
 %%
 % get the transforms
@@ -194,25 +189,22 @@ write_vtk_image(xV,yV,zV,single(permute(cat(5,vtx,vty,vtz),[1,2,3,5,4])),[outdir
 disp(['Finished writing out saved transformations and jacobians'])
 
 %%
-% update atlas to registered based on in-plane shifts that were calculated
+% update atlas-to-registered based on in-plane shifts that were calculated
 % to center data for display
 % this section corrects for angle, and xz and yz shear
 
-% the rotation component is like this
+
 % unit vector up
 v = [1;0;0;0];
 % what happens to unit vector
 Av = A*v;
-% so we want B or Axy to do two things
-% correct this translation (in xy)
-% and create this rotation (y component)
 theta = atan2(-Av(1),Av(2));
 % what rotation corresponded to this?
 R = [cos(theta),-sin(theta),0,0;
     sin(theta),cos(theta),0,0;
     0,0,1,0;
     0,0,0,1];
-% and we also had a shift that depended on z linearly
+% and we also have a shift that depended on z linearly
 %   
 u0 = [0;0;zJ(f);1]; % what slice am I on?
 v0 = A\u0; % where does this appear in the atlas
@@ -226,15 +218,8 @@ Pxy = [1,0,0,0;
     0,1,0,0;
     0,0,0,0;
     0,0,0,1];
-% the first two componets are the same as the shift above
-% the problem is this is definitely not invertible
 % the goal here is to add a z depending xy shift
 SHIFT = (Pxy * A * Pz * inv(A) * Pz);
-% the problem here is that we have zeros outside of xy
-% but I think we should have identity?
-% so I need to think about how to write this shift
-% a point has two shifts, one independent of z and one that depends on z
-% I think we just need to set its diagonals to 1
 SHIFT(1,1) = 1;
 SHIFT(2,2) = 1;
 SHIFT(3,3) = 1;
@@ -249,15 +234,10 @@ for i = 1 : size(AJ,3)
     AJ_(:,:,i) = AJ(:,:,i) * SHIFTz * R([1,2,4],[1,2,4]) ;
 end
 
-
 A_phix = A_(1,1)*phix + A_(1,2)*phiy + A_(1,3)*phiz + A_(1,4);
 A_phiy = A_(2,1)*phix + A_(2,2)*phiy + A_(2,3)*phiz + A_(2,4);
 A_phiz = A_(3,1)*phix + A_(3,2)*phiy + A_(3,3)*phiz + A_(3,4);
 write_vtk_image(xV,yV,zV,single(cat(4,A_phix-XV,A_phiy-YV,A_phiz-ZV)),[outdir 'atlas_to_registered_displacement.vtk'],'atlas_to_registered')
-
-
-
-
 
 
 %%
@@ -299,9 +279,6 @@ for f = 1 : 1 : length(files)
 %     imagesc(xJ{f},yJ{f},J)
 %     axis image
 
-    % let's normalize it
-    % dividing by 255 is not good enough
-    
 
     %%
     % first apply the 2D affine
@@ -370,22 +347,13 @@ for f = 1 : 1 : length(files)
 
     
     %%
-    % okay actually this is what I want to do
-    % I have a matrix A
-    % I want to factor it 
-    % A = BC
-    % such that B is a rigid transform in XY
-    % AND
-    % a at the center pointing up on this slice, is again a vector at the
-    % center pointing up    
-    % so all we have to do is find what happens to a vector pointin gup
-    % where does 0,0 on this slice end up?
+    % factor the matrix A to make sure it is z is pointing up and there is
+    % no shear
     u0 = [0;0;zJ(f);1];
     v0 = A\u0;
     zatlas = v0(3);
     tmp = A*[0;0;zatlas;1];
     xyoff = tmp(1:2);
-    
     
     % unit vector up
     v = [1;0;0;0];
@@ -404,7 +372,6 @@ for f = 1 : 1 : length(files)
     
 %     inv(R)*A*v has x component 0
     
-    % so what I want is to say
     % first apply A
     % then shift back to center
     % then rotate to verticle
@@ -417,16 +384,10 @@ for f = 1 : 1 : length(files)
     Axyz = inv(R)*inv(Shift)*A;
     Axy = Shift*R;
     
-
-    
-    
-    
     % get a 2D version    
     Axy_ = Axy([1,2,4],[1,2,4]);
     
-    
-    
-    
+
     % so the better reconstruction
     % x \to Axy x \to phiJ(Axy(x)) \to AJ(phiJ(Axy(x)));
     % we need this forward transform to pull the image J backwards
@@ -470,7 +431,6 @@ for f = 1 : 1 : length(files)
 %     %%
     % and now we need the deformation
     % do it exactly the same as above, but use identity
-    % first apply the 2D affine (actually use identity now)
     BJ = eye(3);
     AJiX = BJ(1,1)*XJ + BJ(1,2)*YJ + BJ(1,3);
     AJiY = BJ(2,1)*XJ + BJ(2,2)*YJ + BJ(2,3);
@@ -498,13 +458,7 @@ for f = 1 : 1 : length(files)
     F = griddedInterpolant({yV,xV,zV}, phiinvz-ZV, 'linear','nearest');
     phiiAxyziPhiJiAJiZ = F(AxyziPhiJiAJiY,AxyziPhiJiAJiX,AxyziPhiJiAJiZ) + AxyziPhiJiAJiZ;    
     
-%     % a nicer variable name 
-%     phiiAxyziX = phiiAxyziPhiJiAJiX;
-%     phiiAxyziY = phiiAxyziPhiJiAJiY;
-%     phiiAxyziZ = phiiAxyziPhiJiAJiZ;
-    
-    
-    
+
     
     
 %     %%
