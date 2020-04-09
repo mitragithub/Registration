@@ -1,4 +1,4 @@
-function [x,y,z,I,title,names,spacing] = read_vtk_image(filename)
+function [x,y,z,I,title,names,spacing,origin] = read_vtk_image(filename)
 % skip any white lines
 if nargin < 1
     filename = 'test.vtk';
@@ -169,7 +169,7 @@ while 1
     elseif strcmp(dtype,'float')
         dtype_matlab = 'single';
     elseif strcmp(dtype,'double')
-        dtype_matlab = double;
+        dtype_matlab = 'double';
     end
     
     if ~isempty(R)

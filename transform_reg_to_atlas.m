@@ -1,4 +1,6 @@
 % Feb 2020, converted into function from apply_transform_to_summary_data.m by Daniel Tward
+% each 10um transformation takes 15-20min
+% profile is available at https://www.dropbox.com/sh/8k4xn8ooaqjyrma/AACgzyW9bz4gakluhy-TBw-la?dl=0
 function phiJ=transform_reg_to_atlas(INPUTvol,INPUTspacing,geometry_file,deformation_file,atlas_vtk,output_name)
 % % the resolution of the image in registered space is 10x10x20
 % clear all;
@@ -20,8 +22,8 @@ function phiJ=transform_reg_to_atlas(INPUTvol,INPUTspacing,geometry_file,deforma
 dz0 = INPUTspacing(3); % expected slice sampling interval
 dx0 = INPUTspacing(1);
 % output_name = 'data_registered_to_atlas.vtk';
-output_title = 'data_registered_to_atlas';
-
+% output_title = 'data_registered_to_atlas';
+tic;
 
 
 % we will load the atlas to get a set of sample points for the output data
@@ -52,6 +54,7 @@ while 1
     end
     z = [z,str2num(data{10})];
 end
+fclose(fid);
 %%
 % 2. load reconstructed volume, accounting for missing slices
 % vars = load(image_file); % this takes a really long time, probably there is some compression/decompression
@@ -65,7 +68,7 @@ nslice = size(INPUTvol,3); % it is 255, same as the length of z
 % find where ther are gaps
 dz = diff(z);
 inds = (z-z(1))/dz0+1;
-% 
+%
 % figure;
 % imagesc(squeeze(sum(INPUTvol,3)))
 
@@ -129,30 +132,45 @@ phi = deltaphi + cat(4,XI,YI,ZI);
 % and downsampling the z
 [xI_,yI_,zI_,I_,title_,names] = read_vtk_image(atlas_vtk);
 % zI_ = zI_(1) : dz0 : zI_(end);
-zI_ = zI_(1) : dx0 : zI_(end); % convert into isotropic
-xI_ = xI_(1) : dx0 : xI_(end);
-yI_ = yI_(1) : dx0 : yI_(end);
-%%
-[XI_,YI_,ZI_] = meshgrid(xI_,yI_,zI_);
+% dxtarget=25;
+% zI_ = zI_(1) : dxtarget : zI_(end); % convert into isotropic
+% xI_ = xI_(1) : dxtarget : xI_(end);
+% yI_ = yI_(1) : dxtarget : yI_(end);
+%% this is the time consuming part
+[XI_,YI_,ZI_] = meshgrid(xI_,yI_,zI_); % target space
 % resample phi
-phi_ = zeros([size(XI_),3]);
+phi_=cell(3,1); % each color channel is saved in one cell
 for c = 1 : 3
+    phi_{c} = zeros(size(XI_));
     F = griddedInterpolant({yI,xI,zI},phi(:,:,:,c),'linear','nearest');
-    phi_(:,:,:,c) = F(YI_,XI_,ZI_);
+    phi_{c} = F(YI_,XI_,ZI_); % evaluate phi at each point in target space
 end
 % transform data
-phiJ = zeros([size(phi_,1),size(phi_,2),size(phi_,3),size(INPUTvol,4)]);
+phiJ=cell(3,1);
 for c = 1 : size(INPUTvol,4)
+    tic;
+    phiJ{c} = zeros(size(phi_{1}));
+    if sum(sum(sum(INPUTvol(:,:,:,c))))>0
     F = griddedInterpolant({yJ,xJ,zJ},INPUTvol(:,:,:,c),'linear','none');
-    phiJ(:,:,:,c) = F(phi_(:,:,:,2),phi_(:,:,:,1),phi_(:,:,:,3));
+    phiJ{c} = F(phi_{2},phi_{1},phi_{3});
+    phiJ{c}(isnan(phiJ{c})) = 0;
+    end
+    toc;
 end
-phiJ(isnan(phiJ)) = 0;
+phiJ1=cat(4,phiJ{1},phiJ{2},phiJ{3});
+phiJ=phiJ1;
+clear phiJ1
 %%
 if nargin>5 % save
     disp(['Saving ',output_name,'...'])
     neurondensityatlas=phiJ;
-    save([output_name,'.mat'],'neurondensityatlas','-v7.3')
+    if exist([output_name,'.mat'],'file')
+        save([output_name,'.mat'],'neurondensityatlas','-append')
+    else
+        save([output_name,'.mat'],'neurondensityatlas','-v7.3')
+    end
     % write out in vtk format, here I will use single precision to save disk
-    write_vtk_image(xI_,yI_,zI_,single(phiJ),[output_name,'.vtk'],output_title,names)
-    disp(['Saved.'])
+    %     write_vtk_image(xI_,yI_,zI_,single(phiJ),[output_name,'.vtk'],output_title,names)
+    disp('Saved.')
+    toc;
 end
