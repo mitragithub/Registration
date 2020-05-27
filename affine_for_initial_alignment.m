@@ -79,11 +79,11 @@ for i = 1 : length(files)
     if i == 1
         % typically we expect more slices than 50 micron spacing
         nslices = round((zJ0(end)-zJ0(1))/50/mindown);
-        J = zeros([round(max(nxJ0/3/mindown)), nslices]);
+        J = zeros([round(max(nxJ0(:,1:-1:end)/3/mindown)), nslices]);
         zJ = (0 : size(J,3)-1)*50*mindown;
         if nslices > length(files)
             nslices = length(files);
-            J = zeros([round(max(nxJ0/3/mindown)), nslices]);            
+            J = zeros([round(max(nxJ0(:,1:-1:end)/3/mindown)), nslices]);            
             dz = (zJ0(end) - zJ0(1))/nslices;
             zJ = (0 : size(J,3)-1)*dz;
         end
