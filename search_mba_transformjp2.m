@@ -11,13 +11,27 @@
 function imgdir=search_mba_transformjp2(imgdir0,brainID)
 % identify the image directories
 imgdir=[imgdir0,'/',brainID,'/Transformation_OUTPUT/',brainID,'_img/reg_high_tif_pad_jp2/'];
-if ~exist(imgdir,'dir')
+if ~dircheck(imgdir)
     imgdir=[imgdir0,'/',brainID,'/Transformation_OUTPUT/',brainID,'_img/'];
-    if ~exist(imgdir,'dir')
+    if ~dircheck(imgdir)
         imgdir=[imgdir0,'/',brainID,'/Transformation_OUTPUT/reg_high_tif_pad_jp2/'];
-        if ~exist(imgdir,'dir')
+        if ~dircheck(imgdir)
             imgdir=[];
             warning('Cannot find registered images!')
         end
     end
+end
+end
+
+function tf=dircheck(imgdir)
+if exist(imgdir,'dir')
+    A=dir([imgdir,'/*.jp2']);
+    if ~isempty(A)
+        tf=true;
+    else
+        tf=false;
+    end
+else
+    tf=false;
+end
 end
