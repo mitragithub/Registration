@@ -1783,5 +1783,9 @@ for downloop = 1 : 3
     toc
 
     
+    % in example, quit before high res.
+    if ~isempty(strfind(target_dir,'example')) && downloop == 1
+        break        
+    end
     
 end % of downloop

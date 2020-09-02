@@ -14,6 +14,8 @@ addpath /cis/home/dtward/Functions/plotting
 % this should be changed for your local filesystem
 geometry_file = 'geometry.csv';
 image_file = 'PMD2159_cell_10.mat';
+
+
 deformation_file = 'atlas_to_registered_displacement.vtk';
 dz0 = 40; % expected slice sampling interval
 dx0 = 10; 

@@ -28,3 +28,17 @@ if ~exist(imgdir,'dir') || isempty(jp2files)
         end
     end
 end
+end
+
+function tf=dircheck(imgdir)
+if exist(imgdir,'dir')
+    A=dir([imgdir,'/*.jp2']);
+    if ~isempty(A)
+        tf=true;
+    else
+        tf=false;
+    end
+else
+    tf=false;
+end
+end

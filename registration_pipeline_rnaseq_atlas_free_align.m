@@ -45,6 +45,13 @@ if nargin == 0
     output_dir = '719_test0/';
 
 
+    % try 787 with default parameters
+    % 787
+    input_dir = '/cis/home/dtward/Documents/intensity_transform_and_missing_data/csh_slices/MD787_tif/';
+    output_dir = '787_test0/';
+    config_file = 'nissl_config_787.ini';
+%     create_location_csv_rnaseq(input_dir, 14.72, 14.72, 10, 200,[])
+
     keyboard
 end
 detailed_output_dir = [output_dir(1:end-1),'_detailed/'];
