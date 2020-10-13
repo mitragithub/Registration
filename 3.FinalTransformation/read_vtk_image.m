@@ -1,40 +1,49 @@
-function [x,y,z,I,title,names,spacing,origin] = read_vtk_image(filename)
+function [x,y,z,I,title,names,spacing,origin] = read_vtk_image(filename,ifdisp)
+if nargin<2
+    ifdisp=1;
+end
 % skip any white lines
 if nargin < 1
     filename = 'test.vtk';
 end
 fid = fopen(filename,'rb');
 
-% read the first line, it should just say 
+% read the first line, it should just say
 % # vtk DataFile Version 2.0
-while 1    
-header = fgetl(fid);
-if isempty(header) % skip any blank
-    continue
-end
-disp(header)
-break;
+while 1
+    header = fgetl(fid);
+    if isempty(header) % skip any blank
+        continue
+    end
+    if ifdisp>0
+        disp(header)
+    end
+    break;
 end
 
 
 % now read the title
-while 1    
-title = fgetl(fid);
-if isempty(title) % skip any blank
-    continue
-end
-disp(title)
-break;
+while 1
+    title = fgetl(fid);
+    if isempty(title) % skip any blank
+        continue
+    end
+    if ifdisp>0
+        disp(title)
+    end
+    break;
 end
 
 % now read the type, it must be binary
-while 1    
-binary = fgetl(fid);
-if isempty(binary) % skip any blank
-    continue
-end
-disp(binary)
-break;
+while 1
+    binary = fgetl(fid);
+    if isempty(binary) % skip any blank
+        continue
+    end
+    if ifdisp>0
+        disp(binary)
+    end
+    break;
 end
 if ~strcmp(binary,'BINARY')
     error(['Only support reading BINARY data, but datatype is ' binary])
@@ -42,15 +51,17 @@ end
 
 % now dataset
 while 1
-dataset = fgetl(fid);
-if isempty(dataset) % skip any blank
-    continue
-end
-break;
+    dataset = fgetl(fid);
+    if isempty(dataset) % skip any blank
+        continue
+    end
+    break;
 end
 [~,dataset] = strtok(dataset,' ');
 dataset = dataset(2:end);
-disp(dataset)
+if ifdisp>0
+    disp(dataset)
+end
 if ~strcmp(dataset,'STRUCTURED_POINTS')
     error(['Only support STRUCTURED_POINTS dataset, but dataset is ' dataset])
 end
@@ -58,48 +69,54 @@ end
 
 % now dimensions
 while 1
-dimensions = fgetl(fid);
-if isempty(dimensions) % skip any blank
-    continue
-end
-break;
+    dimensions = fgetl(fid);
+    if isempty(dimensions) % skip any blank
+        continue
+    end
+    break;
 end
 [~,dimensions] = strtok(dimensions,' ');
 dimensions = dimensions(2:end);
 dimensions = sscanf(dimensions,'%d')';
-disp('dimensions');disp(dimensions)
+if ifdisp>0
+    disp('dimensions');disp(dimensions)
+end
 if length(dimensions) ~= 3
     error(['Only support 3D data, but dataset dimensions is ' num2str(dimensions)])
 end
 
 % now origin
 while 1
-origin = fgetl(fid);
-if isempty(origin) % skip any blank
-    continue
-end
-break;
+    origin = fgetl(fid);
+    if isempty(origin) % skip any blank
+        continue
+    end
+    break;
 end
 [~,origin] = strtok(origin,' ');
 origin = origin(2:end);
 origin = sscanf(origin,'%f')';
-disp('origin');disp(origin)
+if ifdisp>0
+    disp('origin');disp(origin)
+end
 if length(origin) ~= 3
     error(['Only support 3D data, but dataset origin is ' num2str(origin)])
 end
 
 % now spacing
 while 1
-spacing = fgetl(fid);
-if isempty(spacing) % skip any blank
-    continue
-end
-break;
+    spacing = fgetl(fid);
+    if isempty(spacing) % skip any blank
+        continue
+    end
+    break;
 end
 [~,spacing] = strtok(spacing,' ');
 spacing = spacing(2:end);
 spacing = sscanf(spacing,'%f')';
-disp('spacing');disp(spacing)
+if ifdisp>0
+    disp('spacing');disp(spacing)
+end
 if length(spacing) ~= 3
     error(['Only support 3D data, but dataset spacing is ' num2str(spacing)])
 end
@@ -112,13 +129,15 @@ z = (0:dimensions(3)-1)*spacing(3) + origin(3);
 
 % now we will start point data
 while 1
-pointdata = fgetl(fid);
-if isempty(pointdata) % skip any blank
-    continue
+    pointdata = fgetl(fid);
+    if isempty(pointdata) % skip any blank
+        continue
+    end
+    break;
 end
-break;
+if ifdisp>0
+    disp(pointdata)
 end
-disp(pointdata)
 POINT_DATA = 'POINT_DATA';
 if ~strcmp(pointdata(1:length(POINT_DATA)), POINT_DATA)
     error(['Only support POINT_DATA, but found ' pointdata]);
@@ -126,7 +145,9 @@ end
 [~,pointdata] = strtok(pointdata,' ');
 pointdata = pointdata(2:end);
 n_datapoints = sscanf(pointdata,'%d')';
-disp(['Number of datapoints ' num2str(n_datapoints)])
+if ifdisp>0
+    disp(['Number of datapoints ' num2str(n_datapoints)])
+end
 if prod(dimensions) ~= n_datapoints
     error(['Product of dimensions should equal number of datapoints, but they are ' num2str(prod(dimensions)) ' and ' num2str(n_datapoints)])
 end
@@ -148,18 +169,23 @@ while 1
     end
     [TYPE,R] = strtok(line, ' ');
     R = R(2:end);
-    disp('image type')
-    disp(TYPE)
-    
+    if ifdisp>0
+        disp('image type')
+        disp(TYPE)
+    end
     
     [names{end+1},R] = strtok(R,' ');
     R = R(2:end);
-    disp('name')
-    disp(names{end})
+    if ifdisp>0
+        disp('name')
+        disp(names{end})
+    end
     
     [dtype,R] = strtok(R,' ');
-    disp('dtype')
-    disp(dtype)
+    if ifdisp>0
+        disp('dtype')
+        disp(dtype)
+    end
     % we should do a conversoin
     dtype_matlab = 'uint8'; % default
     if strcmp(dtype,'unsigned_short')
@@ -178,8 +204,10 @@ while 1
     else
         channels{end+1} = 1;
     end
-    disp('channels')
-    disp(channels{end})
+    if ifdisp>0
+        disp('channels')
+        disp(channels{end})
+    end
     if channels{end} ~= 1
         error('only single channel images supported')
     end
