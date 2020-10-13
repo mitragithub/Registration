@@ -151,7 +151,7 @@ for c = 1 : size(INPUTvol,4)
     tic;
     phiJ{c} = zeros(size(phi_{1}));
     if sum(sum(sum(INPUTvol(:,:,:,c))))>0
-    F = griddedInterpolant({yJ,xJ,zJ},INPUTvol(:,:,:,c),'linear','none');
+    F = griddedInterpolant({yJ,xJ,zJ},INPUTvol(:,:,:,c),'linear','nearest');
     phiJ{c} = F(phi_{2},phi_{1},phi_{3});
     phiJ{c}(isnan(phiJ{c})) = 0;
     end

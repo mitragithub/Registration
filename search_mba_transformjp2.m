@@ -8,14 +8,21 @@
 % Output:
 %   - imgdir: a string that contains the correct directory with transformed
 %   images.
-function imgdir=search_mba_transformjp2(imgdir0,brainID)
+function imgdir=search_mba_transformjp2(imgdir0,brainID,transformdir)
+if nargin<3
+    % identify transformation output dir
+    transformdir=[imgdir0,'/',brainID,'/Transformation_OUTPUT/'];
+end
 % identify the image directories
-imgdir=[imgdir0,'/',brainID,'/Transformation_OUTPUT/',brainID,'_img/reg_high_tif_pad_jp2/'];
-if ~dircheck(imgdir)
-    imgdir=[imgdir0,'/',brainID,'/Transformation_OUTPUT/',brainID,'_img/'];
-    if ~dircheck(imgdir)
-        imgdir=[imgdir0,'/',brainID,'/Transformation_OUTPUT/reg_high_tif_pad_jp2/'];
-        if ~dircheck(imgdir)
+imgdir=[transformdir,brainID,'_img/reg_high_tif_pad_jp2/'];
+jp2files=dir([imgdir,'*.jp2']);
+if ~exist(imgdir,'dir') || isempty(jp2files)
+    imgdir=[transformdir,brainID,'_img/'];
+    jp2files=dir([imgdir,'*.jp2']);
+    if ~exist(imgdir,'dir') || isempty(jp2files)
+        imgdir=[transformdir,'/reg_high_tif_pad_jp2/'];
+        jp2files=dir([imgdir,'*.jp2']);
+        if ~exist(imgdir,'dir') || isempty(jp2files)
             imgdir=[];
             warning('Cannot find registered images!')
         end
