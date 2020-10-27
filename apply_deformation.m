@@ -105,7 +105,12 @@ A = Avars.A;
 AJ = Avars.AJ;
 dxVJ = zeros(length(files),2);
 for f = 1 : length(files)
-    dxVJ(f,:) = [vvars.xJ{f}(2)-vvars.xJ{f}(1),vvars.yJ{f}(2)-vvars.yJ{f}(1)];
+    try
+        dxVJ(f,:) = [vvars.xJ{f}(2)-vvars.xJ{f}(1),vvars.yJ{f}(2)-vvars.yJ{f}(1)];
+    catch
+%         keyboard
+        error('mismatch in number of files')
+    end
 end
 
 vtx = vvars.vtx;
@@ -484,7 +489,7 @@ for f = 1 : 1 : length(files)
             
             danfigure(5);
             [thedir_,thename_,theext_] = fileparts(template_names{t});
-            if ~isempty(strfind(template_names{t},'annotation')) || ~isempty(strfind(thename_,'rat_atlas'))
+            if ~isempty(strfind(template_names{t},'annotation')) || ~isempty(strfind(thename_,'rat_atlas')) || ~isempty(strfind(thename_,'seg'))
                 
                 F = griddedInterpolant({yI{t},xI{t},zI{t}},I{t},'nearest','nearest');
                 Seg = F(phiiAxyziPhiJiAJiY, phiiAxyziPhiJiAJiX, phiiAxyziPhiJiAJiZ);
@@ -559,7 +564,8 @@ for f = 1 : 1 : length(files)
                 % update for rat
                 
                 set(gca,'xlim',9000*[-1,1],'ylim',8000*[-1 1]);
-
+            elseif ~isempty(strfind(thedir_,'marmoset'))
+                set(gca,'xlim',12000*[-1,1],'ylim',12000*[-1 1]);
             end
             [directory_, filename_, extension_] = fileparts(files{f});
             saveas(5,[outdir filename_ '_preview_' num2str(t) '_straight.png'])
