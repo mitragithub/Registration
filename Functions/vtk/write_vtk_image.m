@@ -97,6 +97,9 @@ for i = 1 : size(I,5)
         % make x fastest varying
         C = permute(C,[2,1,3,4]);
         fwrite(fid,C(:),type); % use matlab type
+        % note default is little endian which does not work with itksnap or
+        % paraviewcl
+%         fwrite(fid,C(:),type,0,'b'); % use matlab type
     elseif strcmp(TYPE, 'VECTORS')
         fprintf(fid,'VECTORS %s %s\n', names{i}, typestr);
         C = I(:,:,:,:,i);
