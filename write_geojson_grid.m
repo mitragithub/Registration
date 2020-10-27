@@ -37,8 +37,7 @@ fprintf(fid,'      "type": "Feature",\n');
 % now properties
 fprintf(fid,'      "properties":\n');
 fprintf(fid,'      {\n');
-fprintf(fid,['        "name": "' names{i} '",\n']);
-%fprintf(fid,['        "acronym": "' acronym '"\n']);
+fprintf(fid,['        "name": "' names{i} '"\n']);
 fprintf(fid,'      },\n'); % end of properties
 
 
