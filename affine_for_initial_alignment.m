@@ -1,4 +1,4 @@
-function affine_for_initial_alignment(atlas_file, input_dir, pattern, detailed_output_dir, downs, niter)
+function affine_for_initial_alignment(atlas_file, input_dir, pattern, detailed_output_dir, downs, niter,A)
 % load slices
 % construct 3D volume from initializer
 % do affine, and update initializer
@@ -176,6 +176,7 @@ I = I/std(I(:));
 
 %%
 % initial guess of affine transform
+if nargin < 6
 A = eye(4);
 % permute xy, and flip z
 % this is only valid for Allen vtk atlas
@@ -183,35 +184,37 @@ A = [0,1,0,0;
     1,0,0,0;
     0,0,-1,0;
     0,0,0,1]*A;
-if contains(input_dir,'DK39')
-    
-%     A = eye(4);
-% permute xy, and flip z
-% this is only valid for Allen vtk atlas
-% A = [0,1,0,0;
-%     1,0,0,0;
-%     0,0,-1,0;
-%     0,0,0,1]*A;
-A = eye(4);
-% swap xz? no
-% A = [0,0,1,0;
-%     0,1,0,0;
-%     1,0,0,0
-%     0,0,0,1]*A; 
-% sway xy? no
-% A = [0,1,0,0;
-%     1,0,0,0;
-%     0,0,1,0
-%     0,0,0,1]*A; 
-% swap yz
-A = [1,0,0,0;
-    0,0,1,0;
-    0,-1,0,0
-    0,0,0,1]*A; 
-% better, got the sagittal right
-% might be good
-
 end
+
+% if contains(input_dir,'DK39')
+%     
+% %     A = eye(4);
+% % permute xy, and flip z
+% % this is only valid for Allen vtk atlas
+% % A = [0,1,0,0;
+% %     1,0,0,0;
+% %     0,0,-1,0;
+% %     0,0,0,1]*A;
+% A = eye(4);
+% % swap xz? no
+% % A = [0,0,1,0;
+% %     0,1,0,0;
+% %     1,0,0,0
+% %     0,0,0,1]*A; 
+% % sway xy? no
+% % A = [0,1,0,0;
+% %     1,0,0,0;
+% %     0,0,1,0
+% %     0,0,0,1]*A; 
+% % swap yz
+% A = [1,0,0,0;
+%     0,0,1,0;
+%     0,-1,0,0
+%     0,0,0,1]*A; 
+% % better, got the sagittal right
+% % might be good
+% 
+% end
 
 %%
 
@@ -239,6 +242,5 @@ sliceView(xJ,yJ,zJ,AI)
 % end
 
 %%
-keyboard
 A = ThreeD_to_3D_affine_registration_GN(xI,yI,zI,I,xJ,yJ,zJ,Jnorm,A,downs/mindown,niter,0.25);
 save([detailed_output_dir 'initializer_A.mat'],'AJ','A');
