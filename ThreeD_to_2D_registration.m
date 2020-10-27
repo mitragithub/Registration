@@ -32,8 +32,10 @@ if nargin < 6
     % registered.  Otherwise slices are transformed rigidly only
     nonrigid_thick_only = 0;
 end
+% this thick cutoff will not work in general, looking for marmoset keyword
+% is a hack
 thick_cutoff = 20;
-if contains(template_name,'marmoset')
+if contains(template_name,'marmoset') || contains(target_dir,'marmoset')
     thick_cutoff = 80;
 end
 
@@ -288,9 +290,11 @@ for downloop = 1 : 3
         J{f} = double(imread([target_dir files{f}]))/255.0;
         % note this normalization may not be appropriate for different
         % datasets
-        if contains(pattern,'DK39')
-            % maybe I should detect padding as black pixels?
-            J{f} = normcdf(bsxfun(@minus,J{f}, mean(mean(J{f},1),2))/std(J{f}(:)));
+        if isfield(config.DEFAULT,'normalization')
+            if strcmp(config.DEFAULT.normalization,'normcdf')
+                % maybe I should detect padding as black pixels?
+                J{f} = normcdf(bsxfun(@minus,J{f}, mean(mean(J{f},1),2))/std(J{f}(:)));
+            end
         end
         
         % first thing is to get a mask on pixels that are pure white
