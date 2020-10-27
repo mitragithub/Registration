@@ -16,8 +16,6 @@ function write_geojson_grid(fname,names,curves)
 % Download the "Mouse Brain Atlas" ontology as a hierarchically structured json file
 % http://api.brain-map.org/api/v2/structure_graph_download/1.json
 
-% open the ontology
-
 
 
 fid = fopen(fname,'wt');
@@ -37,7 +35,6 @@ fprintf(fid,'      "type": "Feature",\n');
 
 
 % now properties
-
 fprintf(fid,'      "properties":\n');
 fprintf(fid,'      {\n');
 fprintf(fid,['        "name": "' names{i} '",\n']);
@@ -60,23 +57,36 @@ fprintf(fid,'          [\n');
 % loop over the points
 fprintf(fid,'               ');     
 for k = 1 : size(curves{i}{j},2)
-fprintf(fid,['[' num2str(curves{i}{j}(1,k)) ', '  num2str(curves{i}{j}(2,k))  '], ']);
+fprintf(fid,['[' num2str(curves{i}{j}(1,k)) ', '  num2str(curves{i}{j}(2,k))  ']']);
+if k < size(curves{i}{j},2)
+    fprintf(fid,[', ']);
+end
 end
 fprintf(fid,'\n');
 % fprintf(fid,'            ]\n'); % end of inner brackets for this polygon
-fprintf(fid,'          ],\n'); % end of this polygon
+fprintf(fid,'          ]'); % end of this polygon
+if j < ni
+    fprintf(fid,',\n');
+else
+    fprintf(fid,'\n');
+end
 end
 
 
 fprintf(fid,'        ]\n'); % end of coordinates
-fprintf(fid,'      },\n'); % end of geometry
+fprintf(fid,'      }\n'); % end of geometry
 
 
 
 
 
 
-fprintf(fid,'    },\n'); % end of this feature, 4 leading spaces
+fprintf(fid,'    }'); % end of this feature, 4 leading spaces
+if i < n
+    fprintf(fid,',\n');
+else
+    fprintf(fid,'\n');
+end
 
 end
 

@@ -1,4 +1,4 @@
-function write_geojson_ontology(fname,ids,curves)
+function write_geojson_ontology(fname,ids,curves,flag)
 % ids is an array of ints
 % curves is nested cells
 % curves{i} is the multi polygon for name {i}
@@ -15,9 +15,13 @@ function write_geojson_ontology(fname,ids,curves)
 % note download allen ontology instructions
 % Download the "Mouse Brain Atlas" ontology as a hierarchically structured json file
 % http://api.brain-map.org/api/v2/structure_graph_download/1.json
+%
+% note, at the end of a loop we need to avoid a comma
 
 % open the ontology
-
+if nargin == 3
+    flag = 1; % flag means use allen
+end
 
 
 fid = fopen(fname,'wt');
@@ -35,17 +39,21 @@ if ids(i) == 0 %|| ids(i) == 65535
 end
 fprintf(fid,'    {\n'); % start this feature, 4 spaces
 fprintf(fid,'      "type": "Feature",\n');
-fprintf(fid,['      "id": "' ids(i) '",\n']);
+fprintf(fid,['      "id": "' num2str(ids(i)) '",\n']);
 
 
 % now properties
 % we need to look up the number
-try
-    [name,acronym] = allen_ontology_from_id(ids(i));
-catch
+if flag
+    try
+        [name,acronym] = allen_ontology_from_id(ids(i));
+    catch
+        name = 'unknown';
+        acronym = 'unk';    
+    end
+else
     name = 'unknown';
     acronym = 'unk';
-    
 end
 
 fprintf(fid,'      "properties":\n');
@@ -70,23 +78,36 @@ fprintf(fid,'            [\n');
 % loop over the points
 fprintf(fid,'               ');     
 for k = 1 : size(curves{i}{j},2)
-fprintf(fid,['[' num2str(curves{i}{j}(1,k)) ', '  num2str(curves{i}{j}(2,k))  '], ']);
+fprintf(fid,['[' num2str(curves{i}{j}(1,k)) ', '  num2str(curves{i}{j}(2,k))  ']']);
+if k < size(curves{i}{j},2)
+    fprintf(fid,[', ']);
+end
 end
 fprintf(fid,'\n');
 fprintf(fid,'            ]\n'); % end of inner brackets for this polygon
-fprintf(fid,'          ],\n'); % end of this polygon
+fprintf(fid,'          ]'); % end of this polygon
+if j < ni
+    fprintf(fid,',\n');
+else
+    fprintf(fid,'\n');
+end
 end
 
 
 fprintf(fid,'        ]\n'); % end of coordinates
-fprintf(fid,'      },\n'); % end of geometry
+fprintf(fid,'      }\n'); % end of geometry
 
 
 
 
 
 
-fprintf(fid,'    },\n'); % end of this feature, 4 leading spaces
+fprintf(fid,'    }'); % end of this feature, 4 leading spaces
+if i < n
+    fprintf(fid,',\n');
+else
+    fprintf(fid,'\n');
+end
 
 end
 
