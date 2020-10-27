@@ -13,7 +13,6 @@ function atlas_free_rigid_alignment_v02(target_dir, pattern, output_dir, r, down
 
 % I will now use laplacian normalizatoin
 % r is a constant in front
-
 addpath Functions/plotting
 addpath Functions/downsample
 addpath Functions/gradient
@@ -77,9 +76,6 @@ dxJ0 = cellfun(@(x)str2num(x), csv_data(:,5:6));
 zJ0 = cellfun(@(x)str2num(x), csv_data(:,10));
 dz0 = cellfun(@(x)str2num(x), csv_data(:,7));
 
-
-
-% keyboard
 
 
 
