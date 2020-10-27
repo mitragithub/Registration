@@ -89,6 +89,22 @@ end
 sigmaM = 0.05;
 sigmaA = sigmaM*5;
 muA = cat(3,1,1,1);
+order = 3; % only support order 1,2,3 for polynomial contrast transform
+
+N2 = 0;
+for c1 = 1 : CI
+    for c2 = c1 : CI
+        N2 = N2 + 1;        
+    end
+end
+N3 = 0;
+for c1 = 1 : CI
+    for c2 = c1 : CI
+        for c3 = c2 : CI
+            N3 = N3 + 1;    
+        end
+    end
+end
 
 
 %%
@@ -137,8 +153,34 @@ for downloop = 1 : length(downs)
         % now intensity
         % start with just linear
         D = cat(3,ones(size(AId,1),size(AId,2)),AId);
+        if order >= 2
+        D2 = zeros(size(AId,1),size(AId,2),N2);
+        count = 0;
+        for c1 = 1 : CI
+            for c2 = c1 : CI
+                count = count + 1;
+                D2(:,:,count) = AId(:,:,c1).*AId(:,:,c2);
+            end
+        end
+        D = cat(3,D,D2);
+        end
+        if order >= 3
+        D3 = zeros(size(AId,1),size(AId,2),CI);
+        count = 0;
+        for c1 = 1 : CI            
+            count = count + 1;
+            D3(:,:,count) = AId(:,:,c1).^3;            
+        end
+        D = cat(3,D,D3);
+        end
+        
         Dvec = reshape(D,[],size(D,3));
         coeffs = (bsxfun(@times,Dvec,WM(:))'*Dvec) \ (bsxfun(@times,Dvec,WM(:))' * reshape(Jd,[],CJ));
+        % note that for missl to myelin alignment is not working well, this
+        % needs to be addressed
+        
+        
+        
 
         if any(isnan(coeffs))
             D = cat(3,ones(size(AId,1),size(AId,2)));
