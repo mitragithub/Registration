@@ -43,6 +43,9 @@ adjust_centers = 1;
 if contains(target_dir,'DK39') % sagittal
     adjust_centers = 0;
 end
+if contains(target_dir,'marmoset') % getting cut off
+    adjust_centers = 0;
+end
 
 %%
 % load template
@@ -523,7 +526,8 @@ for f = 1 : 1 : length(files)
             danfigure(5);
             clf;
             [thedir_,thename_,theext_] = fileparts(template_names{t});
-            if ~isempty(strfind(template_names{t},'annotation')) || ~isempty(strfind(thename_,'rat_atlas'))
+            if ~isempty(strfind(template_names{t},'annotation')) || ~isempty(strfind(thename_,'rat_atlas')) ||  ~isempty(strfind(thename_,'seg'))
+                
                 
                 F = griddedInterpolant({yI{t},xI{t},zI{t}},I{t},'nearest','none');
                 Seg = F(phiiAxyziPhiJiAJiY, phiiAxyziPhiJiAJiX, phiiAxyziPhiJiAJiZ);
@@ -962,10 +966,11 @@ for f = 1 : 1 : length(files)
                 % update for rat
                 
                 set(gca,'xlim',9000*[-1,1],'ylim',8000*[-1 1]);
+            elseif ~isempty(strfind(thedir_,'marmoset'))
+                set(gca,'xlim',12000*[-1,1],'ylim',12000*[-1 1]);
 
             end
-            if  ~isempty(strfind(thename_,'rat'))
-            end
+
             [directory_, filename_, extension_] = fileparts(files{f});
             saveas(5,[outdir filename_ '_preview_' num2str(t) '_straight.png'])
             
@@ -978,6 +983,9 @@ for f = 1 : 1 : length(files)
             % and use 50micron resolution
             % three files, for phiiAxyziPhiJiAJiY, phiiAxyziPhiJiAJiX, phiiAxyziPhiJiAJiZ
             levels = -6000:500:6000;
+            if  contains(thedir_,'marmoset')
+                levels = -12000:1000:12000;
+            end
             contoursx = {};
             contoursy = {};
             contoursz = {};
@@ -994,6 +1002,22 @@ for f = 1 : 1 : length(files)
             contour(xJ{f},yJ{f},phiiAxyziPhiJiAJiZ,levels,'b');
             hold off
             axis image;
+                        title(['z = ' num2str(zJ(f))])
+            axis image;
+            xlabel x;
+            ylabel y;
+            set(gca,'xlim',6000*[-1,1],'ylim',5000*[-1 1]);
+            if  ~isempty(strfind(thename_,'rat'))
+                % update for rat
+                
+                set(gca,'xlim',9000*[-1,1],'ylim',8000*[-1 1]);
+            elseif ~isempty(strfind(thedir_,'marmoset'))
+                set(gca,'xlim',12000*[-1,1],'ylim',12000*[-1 1]);
+
+            end
+
+
+            
             % do x contours
             contoursx_ = {};            
             namesx_ = {};
