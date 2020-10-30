@@ -16,6 +16,8 @@ function atlas_free_rigid_alignment(target_dir, pattern, output_dir, r, downs, n
 addpath Functions/plotting
 addpath Functions/downsample
 addpath Functions/gradient
+addpath Functions/frame2Gif
+addpath Functions/vtk
 
 if nargin < 4
     r = 25;
@@ -76,8 +78,6 @@ dz0 = cellfun(@(x)str2num(x), csv_data(:,7));
 
 
 
-
-
 % keyboard
 
 
@@ -117,6 +117,10 @@ itercount = 0;
 if length(niter) == 1
     niter = repmat(niter,length(downs));
 end
+
+% plotting
+qlim = [0.001,0.999];
+nplot = 5;
 for downcount = 1 : length(downs)
     down = downs(downcount);
 
@@ -124,6 +128,10 @@ for downcount = 1 : length(downs)
     % loop through the files
     nxJ = zeros(length(files),2);
     for i = 1 : n
+        
+        if i == round(n/2) && contains(target_dir,'human')
+%             keyboard
+        end
         J_ = imread([target_dir files{i}]);
         J_ = double(J_)/255.0;
         J_ = mean(J_,3);
@@ -137,7 +145,8 @@ for downcount = 1 : length(downs)
         if isnan(val(i))
             val(i) = val(i-1); % entirely missing slice?
         end
-        J_(J_==1) = val(i);
+        J_(J_==1) = val(i); % take care of white background (padding that may have been inserted in other steps)
+        
         
         % for thick images, just ignore them
         if dz0(i) > skip_thick && skip_thick > 0
@@ -148,10 +157,23 @@ for downcount = 1 : length(downs)
             end
         end
         
+        % take care of very dark bits
+        thresh = 0.01;
+        if contains(target_dir,'human')
+            thresh = 0.15; % 0.15 seems to get the dark border for human data
+        end
+        W_ = J_>=thresh;
+        J_(J_<thresh) = val(i);
+        
         
         % downsample
-        [xJ{i},yJ{i},J{i}] = downsample2D(xJ{i},yJ{i},J_,down*[1 1]);
-        % sometimes images will just be one pixel
+        [~,~,W{i}] = downsample2D(xJ{i},yJ{i},W_,down*[1 1]);
+        [xJ{i},yJ{i},J{i}] = downsample2D(xJ{i},yJ{i},J_.*W_,down*[1 1]);
+
+        J{i} = J{i} ./ W{i};
+        J{i}(isnan(J{i})) = val(i);
+        
+        % sometimes images will just be one pixel and downsampling doesn't work
         if size(J{i},1) < 2
             J{i} = [J{i};J{i}];
             yJ{i} = [yJ{i}(1),yJ{i}(1)+1];
@@ -167,12 +189,34 @@ for downcount = 1 : length(downs)
         dxJ(i,:) = [xJ{i}(2)-xJ{i}(1), yJ{i}(2)-yJ{i}(1)];
 %         dxJ(i,:) = dxJ0(i,:)*down;
         
+        % build some weights to avoid boundary effects
+        try
+            n_boundary = round(min([size(J{i},1),size(J{i},2)])*0.25); % about 20 percent boundary  
+            tmp = build_boundary_weight([size(J{i},1),size(J{i},2)],n_boundary);
+            W{i} = W{i}.*tmp;
+        catch
+            W{i} = W{i}.*ones([size(J{i},1),size(J{i},2)]);
+        end
+        
+        % maybe contrast normalization will be useful
+        if contains(target_dir,'human')
+%             Jmean = sum(J{i}(:).*W{i}(:)) / sum(W{i}(:));
+%             J2mean = sum(J{i}(:).^2.*W{i}(:)) / sum(W{i}(:));
+%             
+%             Jstd = J2mean - Jmean.^2;
+%             Jstd(Jstd < 0) = 0;
+%             Jstd = sqrt(Jstd);
+%             Jz = (J{i} - Jmean)/Jstd;
+%             J{i} = normcdf(Jz);
+%             val(i) = normcdf((val(i) - Jmean)/Jstd);
+        end
         
     end
     nxI = [max(nxJ,[],1),length(files)];
     % last component doesn't matter, display as a square
     dxI = [dxJ(1,:),1/n*nxI(1)*dxJ0(1,1)*down]; % common to all slices
     I0 = zeros(nxI(2),nxI(1),nxI(3));
+    W0 = zeros(nxI(2),nxI(1),nxI(3));
     
 
     
@@ -183,24 +227,22 @@ for downcount = 1 : length(downs)
     
 
     
-    qlim = [0.001,0.999];
-    clim = quantile(I0(:),qlim);
     
     %%
     % weights for averaging
     tmp = exp(-[-r:r].^2/2/(r/3)^2);
     tmp = tmp / sum(tmp);
-%     CC = ([-r:r]==0) - tmp;
-%     CC = CC*0.2;
     CC = tmp;
+%     if ~contains(target_dir,'human')
     CC(([-r:r]==0)) = 0;
+%     end
     CC = CC/sum(CC);
     
-    nmax = length(CC);
+
     
     
     %%
-    for it = 1 : niter(downcount)
+    for it = 1 : niter(downcount)        
         
         % load data again into I
         for i = 1 : n
@@ -211,21 +253,30 @@ for downcount = 1 : length(downs)
             tmp = F(Ys,Xs);
             tmp(isnan(tmp)) = val(i);
             I0(:,:,i) = tmp;
-        end
-        if it == 1
-            qlim = [0.001,0.999];
-            clim = quantile(I0(:),qlim);
+            
+            F = griddedInterpolant({yJ{i},xJ{i}},W{i},'linear','none');
+            tmp = F(Ys,Xs);
+            tmp(isnan(tmp)) = 0;
+            W0(:,:,i) = tmp;
         end
 
     
     
-        % first pad the image
+        % first pad the image, and get a weighted average
         npad = r;
-        I0p = padarray(I0,[0,0,npad],'both','symmetric');
+        I0p = padarray(I0.*W0,[0,0,npad],'both','symmetric');
         I = convn(I0p,reshape(CC,1,1,[]),'same');
         I = I(:,:,npad+1:end-npad);
+        W0p = padarray(W0,[0,0,npad],'both','symmetric');
+        W_ = convn(W0p,reshape(CC,1,1,[]),'same');
+        W_ = W_(:,:,npad+1:end-npad);
+        I = I ./ W_;
+        
+        
         % compute the image
-        for i = 1 : n
+        for i = 1 : n % loop over slices
+            for sliceit = 1 : 1 % extra iterations
+                
             if dz0(i) > skip_thick && skip_thick>0
                 continue
             end
@@ -237,6 +288,7 @@ for downcount = 1 : length(downs)
             Ys = Ai(2,1)*XJ + Ai(2,2)*YJ + Ai(2,3);
             F = griddedInterpolant({yI,xI},I(:,:,i),'linear','nearest');
             AI = F(Ys,Xs);
+            AI(isnan(AI)) = 0; % should only be where W == 0
             
             % error
             err = AI - J{i};
@@ -254,16 +306,17 @@ for downcount = 1 : length(downs)
                     Derr(:,:,count) = AI_x.*Xs + AI_y.*Ys;
                 end
             end
-            tmp = reshape(Derr,[],6);
+            tmp = reshape(bsxfun(@times,Derr,sqrt(W{i})),[],6);
             DerrDerr = tmp'*tmp;
             
             
             % update
-            step = DerrDerr \ (tmp'*err(:));
+            step = DerrDerr \ (tmp'*(err(:).*sqrt(W{i}(:))));
             step = reshape(step,3,2)';
             if any(isnan(step(:))) || any(isinf(step(:)))
+                keyboard
                 step = zeros(size(step));
-%                 keyboard
+
             end
             % AJ = repmat(eye(3),[1,1,length(files)]);
 
@@ -274,7 +327,8 @@ for downcount = 1 : length(downs)
             Ai(1:2,1:2) = U*V';
             AJ(:,:,i) = inv(Ai);
         
-            if i == 1
+            if i == round(size(I,3)/2)
+                
                 danfigure(25);
                 clf
                 subplot(2,2,1)
@@ -293,7 +347,7 @@ for downcount = 1 : length(downs)
                 colorbar
                 
                 subplot(2,2,4)
-                imagesc(err)
+                imagesc(err.*W{i})
                 title('err')
                 colorbar
                 
@@ -301,20 +355,36 @@ for downcount = 1 : length(downs)
             end
                 
         
+            end
+        
+        
+        
         end
         
-        danfigure(99);
-        sliceView(xI,yI,zI,I)
-        danfigure(100);
-        sliceView(xI,yI,zI,I0)
-        title(['down ' num2str(down) ', iter ' num2str(it)])
-        
-        
-        
-        drawnow;
-        
-        
-        
+        if it == 1
+            clim = quantile(I(:),qlim);
+        end
+        if ~(mod(it-1,5))
+            danfigure(99);
+            sliceView(xI,yI,zI,I,nplot,clim)
+            danfigure(100);
+            sliceView(xI,yI,zI,I0,nplot,clim)
+            title(['down ' num2str(down) ', iter ' num2str(it)])
+
+            % human dataset, produce output
+            if contains(target_dir,'human')
+                if it == 1 && downcount == 1
+                    frame0 = [];
+                    frame1 = [];
+                end
+                frame0 = [frame0, getframe(99)];
+                frame1 = [frame1,getframe(100)];
+                frame2Gif(frame0,[output_dir 'slice_average.gif'])
+                frame2Gif(frame1,[output_dir 'slice_align.gif'])
+            end
+
+            drawnow;
+        end
         % make it zero mean(?)
     end
 
@@ -327,6 +397,39 @@ if ~exist(output_dir,'dir')
 end
 save([output_dir 'initializer_A.mat'],'AJ');
 
+if contains(target_dir,'human')
+    
+    
+    % write out volume    
+    %write_vtk_image(xI,yI,zI,uint8(I0*255),[output_dir 'slice_recon.vtk'],'reconstructed human slices')
+    addpath /home/dtward/Documents/Functions/avwQuiet
+%     1    Binary             (  1 bit  per voxel)
+%     2    Unsigned character (  8 bits per voxel)
+%     4    Signed short       ( 16 bits per voxel)
+%     8    Signed integer     ( 32 bits per voxel)
+%    16    Floating point     ( 32 bits per voxel)
+%    32    Complex, 2 floats  ( 64 bits per voxel), not supported
+%    64    Double precision   ( 64 bits per voxel)
+%   128    Red-Green-Blue     (128 bits per voxel), not supported
+    
+    avw = avw_hdr_make;
+    avw.img = single(I0);
+    avw.hdr.dime.dim(2:4) = size(I0);
+    avw.hdr.dime.pixdim(2:4) = [dxJ(1,:),zJ0(2)-zJ0(1)]; 
+    % note dx0 is arbitrary in this code, 
+    % for human dz0 should be multiplied by 2 (for nissl/fluoro spacing),
+    % or look at distance between nissl slices
+    avw.hdr.dime.bitpix = 32;
+    avw.hdr.dime.dtype = 16;
+    avw.hdr.dime.bitpix = 8;
+    avw.hdr.dime.dtype = 2;
+    avw.img = uint8(I0*255);
+    avw_img_write(avw,[output_dir 'slice_recon.img'])
+    avw.img = uint8(I*255);
+    avw_img_write(avw,[output_dir 'slice_average.img'])
+    avw.img = uint8(W0*255);
+    avw_img_write(avw,[output_dir 'slice_weights.img'])
+end
 % keyboard
 return
 keyboard

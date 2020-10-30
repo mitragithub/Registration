@@ -26,12 +26,19 @@ if nargin == 0
     seg_file = '/cis/home/dtward/Documents/waxholm_rat_atlas/WHS_SD_rat_atlas_v2_pack/WHS_SD_rat_atlas_v2.vtk';
     atlas_file = '/cis/home/dtward/Documents/waxholm_rat_atlas/WHS_SD_rat_atlas_v2_pack/WHS_SD_rat_T2star_v1.01_down2_ss.vtk';
 
+    
     input_dir = '/cis/home/dtward/Documents/csh_data/rat/PTM800/';
     output_dir = 'PTM800/OUTPUT/';
+    
     % second try
     input_dir = 'PTM800_BA/PTM800_BA/';
     output_dir = 'PTM800_BA/OUTPUT/';
-
+    
+    seg_file = '/mnt/data/waxholm/WHS_SD_rat_atlas_v2_pack/WHS_SD_rat_atlas_v2.vtk';
+    atlas_file = '/mnt/data/waxholm/WHS_SD_rat_atlas_v2_pack/WHS_SD_rat_T2star_v1.01_down2_ss.vtk';
+    
+    seg_file = '/mnt/data/waxholm/WHS_SD_rat_atlas_v2_pack/WHS_SD_rat_atlas_v2_crop.vtk';
+    atlas_file = '/mnt/data/waxholm/WHS_SD_rat_atlas_v2_pack/WHS_SD_rat_T2star_v1.01_crop_down2_ss.vtk';
     
     % ideally this step should be done before hand
 %     create_location_csv_MBA(input_dir, 14.72, 14.72, 20)

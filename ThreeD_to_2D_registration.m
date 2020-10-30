@@ -22,6 +22,8 @@ function ThreeD_to_2D_registration(template_name, target_dir, pattern, config_fi
 % for a binary label that corresponds to CCF 5 only
 % we will call this "edit mode"
 % and enable it by inputing template name as a cell array (image, labels)
+
+
 tic
 
 
@@ -31,6 +33,9 @@ if nargin < 6
     nonrigid_thick_only = 0;
 end
 thick_cutoff = 20;
+if contains(template_name,'marmoset')
+    thick_cutoff = 80;
+end
 
 addpath Functions/plotting
 addpath Functions/downsample
@@ -281,12 +286,22 @@ for downloop = 1 : 3
     for f = 1 : length(files)
         
         J{f} = double(imread([target_dir files{f}]))/255.0;
+        % note this normalization may not be appropriate for different
+        % datasets
+        if contains(pattern,'DK39')
+            % maybe I should detect padding as black pixels?
+            J{f} = normcdf(bsxfun(@minus,J{f}, mean(mean(J{f},1),2))/std(J{f}(:)));
+        end
+        
         % first thing is to get a mask on pixels that are pure white
 %         danfigure(2729);
 %         WMask{f} = 1.0 - double(all(J{f}==1,3));
 %         subplot(1,2,1)
 %         imagesc(WMask{f})
 %         axis image
+
+        % this step may not be appropriate if we're not dealing with nissl
+        % it will detect white backgrounds that span an entire row
         WMask{f} = 1.0 - detect_padding_in_nissl(J{f});
 %         subplot(1,2,2);
 %         imagesc(WMask{f})

@@ -1,4 +1,4 @@
-function create_location_csv_MBA(directory, dx, dy, dz, outdir)
+function create_location_csv_MBA(directory, dx, dy, dz, outdir,ext)
 % because the sorting key may change, this should ONLY be used carefully
 % also this file hard codes 15 micron pixels
 % note it is actually 0.46*32 = 14.72
@@ -8,15 +8,18 @@ function create_location_csv_MBA(directory, dx, dy, dz, outdir)
 % here we will identify the nissl images, and the "other" images
 
 % keyboard
+if nargin < 6
+    ext = 'tif';
+end
 if nargin < 5
     outdir = directory; % same input and output
 end
 disp(['input directory ' directory])
 
 % keyboard
-files_ = dir([directory '*-N*.tif']); % get the nissl only
+files_ = dir([directory '*-N*.' ext]); % get the nissl only
 files = {files_.name};
-filesAll_ = dir([directory '*.tif']); % get all files
+filesAll_ = dir([directory '*.' ext]); % get all files
 filesAll = {filesAll_.name};
 % remove nissl and keep what's left
 filesF = setdiff(filesAll,files);

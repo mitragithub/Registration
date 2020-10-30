@@ -19,7 +19,7 @@ disp(['Starting to apply deformations'])
 addpath Functions/plotting
 addpath Functions/vtk
 
-
+rng('default') 
 rng(1);
 colors = rand(256,3);
 
@@ -187,6 +187,15 @@ write_vtk_image(xV,yV,zV,single(detjac),[outdir 'atlas_to_registered_detjac.vtk'
 % we also want the velocity field
 write_vtk_image(xV,yV,zV,single(permute(cat(5,vtx,vty,vtz),[1,2,3,5,4])),[outdir 'atlas_to_registered_velocity.vtk'],'atlas_to_registered_velocity')
 disp(['Finished writing out saved transformations and jacobians'])
+
+%%
+detjacbrain = detjac((padarray(I{1},[1,1,1])>0)).^(1/3);
+meandetjacbrain = mean(detjacbrain);
+disp(['Mean change of brain scale is ' num2str(meandetjacbrain)])
+mean_absolute_deviation = mean(abs(detjacbrain - meandetjacbrain));
+disp(['MAD is ' num2str(mean_absolute_deviation)])
+% return
+
 
 %%
 % update atlas-to-registered based on in-plane shifts that were calculated

@@ -46,7 +46,6 @@ isthicks = cellfun(@(x) str2num(x), csv_data(:,7)) > 20;
 AJ = zeros(3,3,length(files));
 % load and downsample
 for i = 1 : length(files)
-
     disp(['downsampling ' num2str(i) ' of ' num2str(length(files))])
     I_ = imread([target_dir files{i}]);
 
@@ -114,6 +113,8 @@ for i = 1 : length(files)
     
     
 end
+
+
 %%
 if ~exist(output_dir,'dir')
     mkdir(output_dir);
