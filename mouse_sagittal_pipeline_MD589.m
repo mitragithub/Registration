@@ -1,5 +1,5 @@
 % Standard registration pipeline with settings for:
-%     mouse DK39
+%     mouse sagittal images MD589
 % All options are set in the first cell and this file is run as a script
 % All 3D images are expected to be in vtk format
 % 2D images are expected to lie in a single directory and described with a
@@ -57,36 +57,36 @@
 % dx_contour: a size to output coordinate grids
 %
 
-
 addpath Functions/plotting
 addpath Functions/downsample
 addpath Functions/vtk
-
-
 
 clear all;
 close all;
 fclose all;
 
-% where to put outputs
-output_prefix = 'dk39_output_v01/';
+% where to put outputs, this should be a directory ending in a slash
+output_prefix = 'md589_output_v00/';
 
 % 2D data, a directory
-data_2D_directory = 'DK39/DK39RGB/';
+data_2D_directory = 'MD589/';
 data_2D = {
-    {'neurotrace','*.png'},
+    {'nissl','*.tif'},
 }; % how to find the different modalities
 data_2D_register = 1; % index for which of the above is for registration
 % for dk39
-config_file = 'DK39_config.ini'; % config for 3D to 2D map
+config_file = 'MD589_sagittal_config.ini'; % config for 3D to 2D map
 
-% for dk39 sagittal initial affine
+% md 589 sagittal
 A0 = eye(4);
 A0 = [1,0,0,0;
     0,0,1,0;
     0,-1,0,0
     0,0,0,1]*A0; 
-
+A0 = [0,-1,0,0;
+    1,0,0,0;
+    0,0,1,0;
+    0,0,0,1]*A0;
 
 % for 3D data, separate into spaces
 data_3D_files = {
@@ -497,7 +497,7 @@ r = 10;
 downs = [16,8,4];
 niter = [40,20,10];
 skip_thick = -1; % no thick slices to be skipped
-load_initializer = 0;
+load_initializer = 1;
 e = 0.05;
 atlas_free_rigid_alignment_v02(data_2D_directory, data_2D{data_2D_register}{2}, output_prefix, r, downs, niter, e, skip_thick, load_initializer)
 
@@ -620,6 +620,7 @@ Aphiz = A(3,1)*phix + A(3,2)*phiy + A(3,3)*phiz + A(3,4);
 disp('Starting to load slice geometry info')
 geometry_file = dir([data_2D_directory '*.csv']);
 copyfile([data_2D_directory geometry_file(1).name],output_prefix)
+
 fid = fopen([data_2D_directory geometry_file(1).name],'rt');
 line = fgetl(fid); % ignore the first line
 % it should say
@@ -738,10 +739,7 @@ end
 xg = themin:dxJ(1,1):themax;
 yg = themin:dxJ(1,2):themax;
 [Xg,Yg] = meshgrid(xg,yg);
-
-
 disp('Finished constructing uniform 2D sampling grid')
-
 
 %%
 % in this example we bring each 3D dataset 

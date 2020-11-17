@@ -1,5 +1,5 @@
 % Standard registration pipeline with settings for:
-%     mouse DK39
+%     marmoset m6328
 % All options are set in the first cell and this file is run as a script
 % All 3D images are expected to be in vtk format
 % 2D images are expected to lie in a single directory and described with a
@@ -57,7 +57,6 @@
 % dx_contour: a size to output coordinate grids
 %
 
-
 addpath Functions/plotting
 addpath Functions/downsample
 addpath Functions/vtk
@@ -69,50 +68,76 @@ close all;
 fclose all;
 
 % where to put outputs
-output_prefix = 'dk39_output_v01/';
+output_prefix = 'm6328_v01_output/';
 
 % 2D data, a directory
-data_2D_directory = 'DK39/DK39RGB/';
+data_2D_directory = '/home/dtward/data/csh_data/marmoset/m6328/slices/';
 data_2D = {
-    {'neurotrace','*.png'},
+    {'nissl','*-N*'},
+    {'fluoro','*-F*'},
+    {'myelin','*-M*'}
 }; % how to find the different modalities
 data_2D_register = 1; % index for which of the above is for registration
-% for dk39
-config_file = 'DK39_config.ini'; % config for 3D to 2D map
+config_file = 'marmoset_nissl_config_test.ini'; % config for 3D to 2D map
+config_file = 'marmoset_nissl_config_test2.ini'; %
 
-% for dk39 sagittal initial affine
+% for marmoset initial affine (this is default)
 A0 = eye(4);
-A0 = [1,0,0,0;
-    0,0,1,0;
-    0,-1,0,0
-    0,0,0,1]*A0; 
+A0 = [0,1,0,0;
+    1,0,0,0;
+    0,0,-1,0;
+    0,0,0,1]*A0;
+
 
 
 % for 3D data, separate into spaces
 data_3D_files = {
     {
-        {'atlas-nissl','atlas_50_vtk/ara_nissl_50.vtk'},
-        {'atlas-seg','atlas_50_vtk/annotation_50.vtk'},
-    }
+        {'atlas-mri','/home/dtward/data/csh_data/marmoset/Woodward_2018/bma-1-mri-reorient.vtk'},
+        {'atlas-nissl','/home/dtward/data/csh_data/marmoset/Woodward_2018/bma-1-nissl-reorient.vtk'},
+        {'atlas-seg','/home/dtward/data/csh_data/marmoset/Woodward_2018/bma-1-region_seg-reorient.vtk'}
+    },
+    {
+        {'exvivo-mri','/home/dtward/data/csh_data/marmoset/m6328/MRI/exvivo/HR_T2/HR_T2_I6328F-reorient.vtk'}
+    },
 };
 % I also need to name the spaces
-data_3D_spaces = {'atlas'};
-data_3D_common = 1; % all 3D data gets registered to this space, here ex vivo
-% mapping pairs for 3D data
+data_3D_spaces = {'atlas','exvivo'};
+data_3D_common = 2; % all 3D data gets registered to this space, here ex vivo
+% mapping pairs
 mapping_3D_pairs = [
+    [1,1,1],
 ];
-mapping_3D_2D = [1,1]; % which dataset to map onto 2D    
+mapping_3D_2D = [2,1]; % which dataset to map onto 2D
+
+% map mri to mri
+% input options as a struct
+% use common_to_target = True or False, mandatory
+% to compute a map in one direction versus the other
+% in this example I want to compute the map atlas to ex vivo, but common is
+% ex vivo, so I put false
+% for now just do true
+opts = struct('common_to_target',true,...
+        'downs',[4,2,1],'niters',round([100,50,25]*4),'niters0',[1,1,1],...
+        'eA',0.5,'eV',2e4,...
+        'nt',5,'a',400,'apfactor',2,'p',2,...
+        'sigmaR',2e3,'sigmaM',0.5,'sigmaA',2.5,'sigmaB',1.0,...
+        'order',3,'prior',[0.9,0.05,0.05]);
+    
 mapping_3D_options = {
+    opts
     };
 
 preprocessing_3D_options = {
     {
+        struct('name','resample_isotropic'),
+        struct('name','bias_correct','which','atlas','scale',2000),
+        struct('name','mask','which','atlas'),
+        struct('name','pad','which','atlas','n',10),        
     }
 };
-
 % for outputting coordinate grids
-dx_contour = 500;
-
+dx_contour = 1000;
 
 % make an output dir
 out_dir = './';
@@ -449,6 +474,7 @@ for m = 1 : size(mapping_3D_pairs,1)
         end
     end
     
+    
 
 end
 % copy over the atlas
@@ -491,11 +517,15 @@ find_centers_for_initialization_nissl(data_2D_directory, data_2D{data_2D_registe
 %%
 % slice to neighbor
 close all;
+r = 25;
+r = 100;
 r = 10;
+r = 3;
 % this downsampling and iterations is enough for a good initial guess
 % not enough for a full accurate reconstruction
 downs = [16,8,4];
 niter = [40,20,10];
+% niter = [40,20,10]*2;
 skip_thick = -1; % no thick slices to be skipped
 load_initializer = 0;
 e = 0.05;
@@ -510,6 +540,7 @@ atlas_free_rigid_alignment_v02(data_2D_directory, data_2D{data_2D_register}{2}, 
 downs = [8,4];
 niter = 30;
 % get atlas file
+
 files = dir([out_dir 'common_space_3D_data/' num2str(mapping_3D_2D(1),'%03d') '_' num2str(mapping_3D_2D(2),'%03d') '*.vtk']);
 atlas_file = [out_dir 'common_space_3D_data/' files(1).name];
 affine_for_initial_alignment(atlas_file, data_2D_directory, data_2D{data_2D_register}{2}, output_prefix, downs, niter,A0)
@@ -620,6 +651,7 @@ Aphiz = A(3,1)*phix + A(3,2)*phiy + A(3,3)*phiz + A(3,4);
 disp('Starting to load slice geometry info')
 geometry_file = dir([data_2D_directory '*.csv']);
 copyfile([data_2D_directory geometry_file(1).name],output_prefix)
+
 fid = fopen([data_2D_directory geometry_file(1).name],'rt');
 line = fgetl(fid); % ignore the first line
 % it should say
@@ -738,10 +770,7 @@ end
 xg = themin:dxJ(1,1):themax;
 yg = themin:dxJ(1,2):themax;
 [Xg,Yg] = meshgrid(xg,yg);
-
-
 disp('Finished constructing uniform 2D sampling grid')
-
 
 %%
 % in this example we bring each 3D dataset 
