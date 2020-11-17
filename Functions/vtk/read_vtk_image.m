@@ -1,11 +1,54 @@
-function [x,y,z,I,title_,names] = read_vtk_image(filename)
-% note title_ has trailing underscore to not interfere with built in title
-% function
+
+function [x,y,z,I,title_,names] = read_vtk_image(filename,endian)
+% Read a vtk image
+% Uses simple legacy vtk format which has human readable headers
+% see here: https://vtk.org/wp-content/uploads/2015/04/file-formats.pdf
+% supports 1 (scalar) or 3 (vector) channel images, 
+% supports multiple datasets in the same coordinate system 
+% (e.g. multiple time points)
+%
+%
+% inputs:
+%     filename             - a string containing the filename (full or 
+%                            relative path) of vtk file
+%     endian (optional)    - either 'l' to read in little endian, or 'b'
+%                            to read in big endian, or do not specify to 
+%                            read in default format (either specified by
+%                            the file, or machine default)
+%
+% outputs:
+%     x,y,z                - spatial location of each voxel in the image,
+%                            note x corresponds to the second image index 
+%                            and y corresponds to the first image index
+%     I                    - output image or vector field. vector field
+%                            uses the 4th index.  Multiple datasets (like 
+%                            timeseries) uses the 5th index
+%     title_               - title of the dataset (any user specified
+%                            string).  Note it has an underscore to avoid a
+%                            naming conflict with the built in function
+%                            title.
+%     names                - cell array containing the name of each dataset
+%                            Note we use the convention that if the name
+%                            ends in (b) it is big endian.
+%     
+%
+% Note: this file format does not specify "endian" in headers.  Most
+% reader software (e.g. ITK snap, paraview) defaults to big endian, even 
+% though many systems default to little endian.  If specified, this code
+% will read the specified endian.  If not specified it will use big endian
+% if the symbol '(b)' is in a dataset name, otherwise it will use the
+% machine default.
+
 
 % skip any white lines
+if nargin < 2
+    endian = ''; % if '(b)' is present in dataset name, use big, otherwise use default
+end
 if nargin < 1
     filename = 'test.vtk';
 end
+
+
 fid = fopen(filename,'rb');
 
 % read the first line, it should just say 
@@ -23,7 +66,8 @@ end
 % now read the title
 while 1    
 title_ = fgetl(fid);
-if isempty(title_) % skip any blank
+if isempty(title_) % skip any blankm2html
+    
     continue
 end
 disp(title_)
@@ -198,12 +242,52 @@ while 1
     
     % now read the data
     if strcmp(TYPE,'SCALARS')
-        I{end+1} = fread(fid,n_datapoints,dtype_matlab);
+        % check for endianness
+        if isempty(endian)
+            % if not specified, look in the title
+            if contains(names{end},'(b)')
+                endian_ = 'b';
+            elseif contains(names{end},'(l)')
+                endian_ = 'l';
+            else
+                endian_ = '';
+            end
+            if ~isempty(endian_)
+                % if we found an endian, use it
+                I{end+1} = fread(fid,n_datapoints,dtype_matlab,endian_);
+            else
+                % otherwise use machine default
+                I{end+1} = fread(fid,n_datapoints,dtype_matlab);
+            end                        
+        else
+            % if we specify endian, use it
+            I{end+1} = fread(fid,n_datapoints,dtype_matlab,endian);
+        end
+
         I{end} = reshape(I{end},dimensions);
         I{end} = permute(I{end},[2,1,3]); % switch x-y to row-col for matlab
     elseif strcmp(TYPE,'VECTORS')
-%         keyboard
-        I{end+1} = fread(fid,n_datapoints*3,dtype_matlab);
+        if isempty(endian)
+            % if not specified, look in the title
+            if contains(names{end},'(b)')
+                endian_ = 'b';
+            elseif contains(names{end},'(l)')
+                endian_ = 'l';
+            else
+                endian_ = '';
+            end
+            if ~isempty(endian_)
+                % if we found an endian, use it
+                I{end+1} = fread(fid,n_datapoints*3,dtype_matlab,endian_);
+            else
+                % otherwise use machine default
+                I{end+1} = fread(fid,n_datapoints*3,dtype_matlab);
+            end                        
+        else
+            % if we specify endian, use it
+            I{end+1} = fread(fid,n_datapoints*3,dtype_matlab,endian);
+        end
+
         I{end} = reshape(I{end},[3,dimensions]);
         I{end} = permute(I{end},[2,3,4,1]); % put components last
         I{end} = permute(I{end},[2,1,3,4]); % switch x-y to row-col
