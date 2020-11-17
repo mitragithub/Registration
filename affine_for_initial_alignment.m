@@ -3,7 +3,7 @@ function affine_for_initial_alignment(atlas_file, input_dir, pattern, detailed_o
 % construct 3D volume from initializer
 % do affine, and update initializer
 
-
+% keyboard
 addpath Functions/plotting
 addpath Functions/downsample
 addpath Functions/vtk
@@ -68,7 +68,7 @@ for i = 1 : length(files)
     modeJ_ = mode(J_(J_(:)~=1));
     J_(J_==1) = modeJ_;
     xJ_ = (0 : nxJ0(i,1)-1)*dxJ0(i,1); xJ_ = xJ_ - mean(xJ_);
-    yJ_ = (0 : nxJ0(i,2)-1)*dxJ0(i,1); yJ_ = yJ_ - mean(yJ_);
+    yJ_ = (0 : nxJ0(i,2)-1)*dxJ0(i,2); yJ_ = yJ_ - mean(yJ_);
     
     % we want to downsample by 3 here to get resolution ~14 close to atlas ~45 
     [xJ_,yJ_,J_] = downsample2D(xJ_,yJ_,J_,[1,1]*3*mindown);
@@ -103,6 +103,7 @@ for i = 1 : length(files)
     % apply transform    
     F = griddedInterpolant({yJ_,xJ_},J_,'linear','none');
     B = AJ(:,:,i);
+%     B = eye(3);
     Xs = B(1,1)*XJ_ + B(1,2)*YJ_ + B(1,3);
     Ys = B(2,1)*XJ_ + B(2,2)*YJ_ + B(2,3);
     J_R = F(Ys,Xs);
