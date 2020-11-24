@@ -1,7 +1,39 @@
 function A = ThreeD_to_3D_affine_registration_GN(xI,yI,zI,I,xJ,yJ,zJ,J,A0,downs,niter,e)
-% this function will register two volumes based on affine
-% the idea is to construct a volume from the aligned slices and do an
-% initial affine map onto it
+% This function will register two image volumes using an affine
+% transformation.  It will use linear contrast transforms and estimate
+% missing data using an EM algorithm.  Images are assumed to have one
+% channel.
+%
+% arguments:
+% xI:         Vector storing pixel locations for the x component of atlas
+%             image I (this is the second index).
+% yI:         Vector storing pixel locations for the y component of atlas
+%             image I (this is the first index)
+% zI:         Vector storing pixel locations for the z component of atlas
+%             image I (this is the third index)
+% I:          The atlas image as a 3D array.  The number of rows should 
+%             match the length of yI, the number of columns should match 
+%             the length of xI.  The number of slices should match the
+%             length of zI.
+% xJ:         Vector storing pixel locations for the x component of target
+%             image J (this is the second index).
+% yJ:         Vector storing pixel locations for the y component of target
+%             image J (this is the first index)
+% zJ:         Vector storing pixel locations for the z component of target
+%             image J (this is the third index)
+% J:          The target image as a 3D array.  The number of rows should 
+%             match the length of yJ, the number of columns should match 
+%             the length of xJ.  The number of slices should match the
+%             length of zJ
+% A0:         An initial guess for the affine transformation stored as an
+%             affine homogeneous matrix (4x4). Defaults to identity.
+% downs:      A vector of downsampling factors to run registration at
+%             different resolutions.  Typically factors of two.
+% niter:      A vector storing the number of iterations of optimization at
+%             each downsampling level, or a scalar storing one number for
+%             all levels.
+% e:          Step size for Gauss Newton optimization.  This is a parameter
+%             of order 1.  Defaults to 0.5.
 %
 % affine registration between I and J
 % run at several different stages of downsampling

@@ -1,4 +1,6 @@
 function A = slice_to_slice_rigid_alignment(xI,yI,I,xJ,yJ,J,A0,downs,niter,eTfactor,eLfactor)
+% This code is deprecated in favor of weighted Gauss Newton version.
+%
 % rigidly align two slices, possibly different modalities
 % we wish to align image I to image J rigidly
 % we use exponential parameterization
