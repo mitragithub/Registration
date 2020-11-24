@@ -1,9 +1,31 @@
 function affine_for_initial_alignment(atlas_file, input_dir, pattern, detailed_output_dir, downs, niter,A)
-% load slices
-% construct 3D volume from initializer
-% do affine, and update initializer
+% Computes an initial affine transform to align a 3D atlas to a 3D stack of
+% slices.  This code first constructs a stack of slices based on previous
+% slice alignment parameters.  Then it transforms the atlas to match these
+% slices using polynomial contrast transformations and an EM algorithm for
+% missing data.
+%
+% arguments:  
+% atlas_file: 3D atlas image in vtk format
+% input_dir:  directory containing 2D low resolution images and geometry 
+%             csv information files
+% pattern:    A glob pattern (e.g. with wildcards) to identify 2D images
+%             used for registration.
+% detailed_output_dir: Directory to output saved transformation matrix, 
+%             stored in affine homogeneous format (4x4).
+% downs:      A vector of downsampling factors to run registration at
+%             different resolutions.  Typically factors of two, such as the 
+%             default downs = [8,4].
+% niter:      Number of iterations of Gauss Newton optimization for each
+%             scale (one number, default 50).
+% A:          Initial guess of affine transformation.  This should be
+%             chosen based on permutations of axes.  e.g. coronal images
+%             versus sagittal images.
+%
+% outputs:
+%             No outputs but affine transformation matrix is written to
+%             detailed_output_dir
 
-% keyboard
 addpath Functions/plotting
 addpath Functions/downsample
 addpath Functions/vtk

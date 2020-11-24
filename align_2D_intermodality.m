@@ -1,6 +1,26 @@
 function align_2D_intermodality(input_dir, pattern0, pattern1, detailed_output_dir)
-% align 2D intermodality images
-% map images matching pattern 0 to the closest image matching pattern 1
+% rigidly align 2D intermodality image slices using polynomial contrast 
+% prediction and missing data estimation
+% For each image matching pattern1, the closest image matching pattern0 is
+% identified.  Rigid registration is then applied to align the pattern0
+% image to the pattern1 image, and each registaration is saved as an affine
+% matrix.  Registration is initialized with a translation by identifying an 
+% image mask and finding its center of mass.
+%
+% arguments:
+% input_dir:  directory containing 2D low resolution images and geometry 
+%             csv information files
+% pattern0:   glob pattern (e.g. with wildcards) to identify files to match
+%             from (i.e. moving image).  Typically this is a Nissl image.
+% pattern1:   glob pattern (e.g. with wildcards) to identify files to match
+%             to (i.e. fixed image).  Typically this is a fluorescence 
+%             image.
+% detailed_output_dir: location where outputs will be saved.
+% outputs:
+%             returns nothing but writes out a .mat file saving rigid
+%             transformation matrices in the detailed_output_dir
+%
+ 
 
 addpath Functions/plotting
 

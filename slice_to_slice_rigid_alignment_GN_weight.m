@@ -1,28 +1,46 @@
-function A = slice_to_slice_rigid_alignment_GN_weight(xI,yI,I,xJ,yJ,J,A0,downs,niter,e)
-% rigidly align two slices, possibly different modalities
+function A = slice_to_slice_rigid_alignment_GN_weight(xI,yI,I,xJ,yJ,J,A0,downs,niter,e,OPT)
+% Rigidly align two slices with an arbitrary number of channels (e.g.
+% grayscale or RGB), possibly from different modalities
 % we wish to align image I to image J rigidly
-% we use exponential parameterization
-% minimize
-% int 1/2 |f(I(Ai x)) - J(x))|^2 dx
-% let fI = I'
-% int 1/2 |I'(Ai x) - J(x))|^2 dx
-% right perturbation
-% A \to A exp(e dA)
-% or Ai \to  exp(-edA)Ai
-% d_ee int 1/2 |I'(exp(-edA) Ai x) - J(x))|^2 dx |_e=0
-% = \int (I'(Ai x) - J(x))^T DI'(Ai x)  (-1) dA Ai x dx
-%= (-1) \int (I'(Ai x) - J(x))^T D[I'(Ai x)] A  dA Ai x dx
-%
-% now for the gauss newton version
-% we will optimize over the matrix B=Ai for simplicity
-% we will not use group perturbation, instead, just project onto rigid
-% d_ee int 1/2 |I'(B x + edB x) - J(x))|^2 dx |_e=0
-% = int (I'(Bx) - J(x)) DI'(Bx) dB x dx
-% = int (I'(Bx) - J(x)) D[I'(Bx)] Bi dB x dx
+% Missing data is identified and ignored using an expectation maximization 
+% algorithm
+% Registration minimizes sum of square error after predicting a polynomial
+% contrast transform.
+% Optimization is performed using the Gauss-Newton
 % 
-% need to incorporate weight (done)
-% in this code we set artifact channel value to 1 and do not update
-%
+% arguments:
+% xI:         Vector storing pixel locations for the x component of atlas
+%             image I (this is the second index).
+% yI:         Vector storing pixel locations for the y component of atlas
+%             image I (this is the first index)
+% I:          The atlas image as a 2D or 3D array.  The number of rows
+%             should match the length of yI, the number of columns should
+%             match the length of xI.  There can be an arbitrary number of
+%             slices.
+% xJ:         Vector storing pixel locations for the x component of target
+%             image J (this is the second index).
+% yJ:         Vector storing pixel locations for the y component of target
+%             image J (this is the first index)
+% J:          The target image as a 2D or 3D array.  The number of rows
+%             should match the length of yJ, the number of columns should
+%             match the length of xJ.  There can be an arbitrary number of
+%             slices.
+% A0:         An initial guess for the rotation and translation stored as
+%             an affine homogeneous matrix (3x3). Defaults to identity.
+% downs:      A vector of downsampling factors to run registration at
+%             different resolutions.  Typically factors of two, such as the 
+%             default downs = [8,4,2].
+% niter:      A vector storing the number of iterations of optimization at
+%             each downsampling level, or a scalar storing one number for
+%             all levels.  Defaults to 100.
+% e:          Step size for Gauss Newton optimization.  This is a parameter
+%             of order 1.  Defaults to 0.5.
+% OPT:        A structure containing other options.  
+% 
+% outputs:
+% A:          A stack of affine transformation matrices (3x3 for each 
+%             slice
+
 if nargin == 0
     % run an example
     
@@ -42,7 +60,33 @@ if nargin == 0
     keyboard
 end
 
-
+% structure of other options
+if nargin < 11
+    OPT = struct;
+end
+% optionally do not do contrast transform
+if isfield(OPT,'nocontrast')
+    nocontrast = OPT.nocontrast;
+else
+    nocontrast = 0;
+end
+% optionally do not estimate missing data
+if isfield(OPT,'noweight')
+    noweight = OPT.noweight;
+else
+    noweight = 0;
+end
+% for missing data estimation specify parameters that correspond to
+% standard deviation of the image for matching (sigmaM), or artifact
+% (sigmaA)
+sigmaM = 0.05;
+sigmaA = sigmaM*5;
+if isfield(OPT,'sigmaM')
+    sigmaM = OPT.sigmaM;
+end
+if isfield(OPT,'sigmaA')
+    sigmaA = OPT.sigmaA;
+end
 
 
 addpath Functions/plotting
@@ -86,10 +130,12 @@ if nargin < 10
 end
 
 
-sigmaM = 0.05;
-sigmaA = sigmaM*5;
+
 muA = cat(3,1,1,1);
 order = 3; % only support order 1,2,3 for polynomial contrast transform
+if nocontrast
+    order = 1;
+end
 
 N2 = 0;
 for c1 = 1 : CI
@@ -189,7 +235,9 @@ for downloop = 1 : length(downs)
         end
         
         fAId = reshape(Dvec*coeffs,size(Jd));
-        
+        if nocontrast
+            fAId = AId;
+        end
         
         
         % now get the cost
@@ -204,7 +252,9 @@ for downloop = 1 : length(downs)
         WA = WA./WSum;
         WM(WSum==0) = 0;
         WA(WSum==0) = 0;
-        
+        if noweight
+            WM = 1.0;
+        end
         
         
         if ~mod(it-1,ndraw) || it == niter(downloop)
@@ -231,6 +281,15 @@ for downloop = 1 : length(downs)
         imagesc(xJd,yJd,err/2.0/diff(climJ) + 0.5)
         axis image
         title('err')
+        
+        
+        danfigure(6);
+        imagesc(xJd,yJd,WM)
+        axis image
+        title('mask')
+        
+        
+        
         disp(['Iteration ' num2str(it) '/' num2str(niter(downloop)) ', energy ' num2str(E)]);
         
         end

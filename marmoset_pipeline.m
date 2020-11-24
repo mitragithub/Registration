@@ -506,7 +506,8 @@ for i = 1 : length(data_2D)
     if i == data_2D_register
         continue
     end
-    align_2D_intermodality(data_2D_directory, data_2D{data_2D_register}{2}, data_2D{i}{2}, output_prefix);
+%     align_2D_intermodality(data_2D_directory, data_2D{data_2D_register}{2}, data_2D{i}{2}, output_prefix);
+    align_2D_intermodality_test(data_2D_directory, data_2D{data_2D_register}{2}, data_2D{i}{2}, output_prefix);
 end
 
 %%

@@ -1,6 +1,21 @@
-% find centers
-% initial slice alignment based on finding centers
 function find_centers_for_initialization_nissl(target_dir, pattern, output_dir, down)
+% Find centers for each 2D image in a set with parameters optimized for
+% Nissl images from Cold Spring Harbor.
+% An initial slice alignment is computed based on translation only.
+% arguments:
+% target_dir: directory containing 2D low resolution images and geometry 
+%             csv information files
+% pattern:    A glob pattern (e.g. with wildcards) to identify 2D images
+%             used for registration.
+% output_dir: Directory to output saved transformation matrices, stored in
+%             affine homogeneous format (3x3).
+% down:       How much to downsample images by.  Defaults to 12.
+%
+% outputs:
+%             This function does not return anything, but saves .mat files
+%             in the output dir.
+% 
+
 addpath Functions/plotting
 addpath Functions/downsample
 if nargin < 4

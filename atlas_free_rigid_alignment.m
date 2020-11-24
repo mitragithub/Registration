@@ -1,17 +1,41 @@
 function atlas_free_rigid_alignment(target_dir, pattern, output_dir, r, downs, niter, e, skip_thick, load_initializer)
 
-% atlas free slice alignment 
-% rigid alignment of a stack
-% each slice is iteratively aligned to a weighted average of its neighbors
-% this can be used as a standalone program
-% or as an initial guess atlas based slice alignment
-%
+% Atlas free slice to slice alignment 
+% This code rigidly aligns stack of images by estimating a smooth atlas
+% image and computing a rigid transformation to each slice.
+% This code follows an ad hoc algorithm where an atlas is estimated by
+% averaging neighboring slices, and then the atlas as aligned rigidly to
+% each slice.  This code has been superceded by version 2, which uses a
+% well posed algorithm.
+% 
+% arguments:  
+% target_dir: directory containing 2D low resolution images and geometry 
+%             csv information files
+% pattern:    A glob pattern (e.g. with wildcards) to identify 2D images
+%             used for registration.
+% output_dir: Directory to output saved transformation matrices, stored in
+%             affine homogeneous format (3x3).
+% r:          Distance scale for smoothness regularization (in number of 
+%             slices)
+% downs:      A vector of downsampling factors to run registration at
+%             different resolutions.  Typically factors of two, such as the 
+%             default downs = [32,16,8,4].
+% niter:      A vector storing the number of iterations of optimization at
+%             each downsampling level, or a scalar storing one number for
+%             all levels.  Defaults to 200.
+% e:          Step size for Gauss Newton optimization.  This is a parameter
+%             of order 1.  Defaults to 0.5.
+% skip_thick: boolean indicating if thick slices should be skipped (this is
+%             for snRNA seq dataset)
+% load_initializer: Boolean to decide if initializer should be loaded from
+%             previous steps (e.g. translation only initial alignment)
+% 
+% outputs:
+%             No outputs but data is saved to a .mat file in output_dir
+
 % TODO, deal with slice spacing in physical units
 % TODO, deal with slices left out
 % skip_thick is a number that we don't update if it is bigger than this
-% going to make a large change here and switch to GN optimization
-
-% keyboard
 
 addpath Functions/plotting
 addpath Functions/downsample
