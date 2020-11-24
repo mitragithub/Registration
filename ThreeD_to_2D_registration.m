@@ -1,6 +1,31 @@
 function ThreeD_to_2D_registration(template_name, target_dir, pattern, config_file, output_dir, nonrigid_thick_only)
-% map 3D atlas to 2D slices
-% only use files that match pattern (with wildcards)
+%
+% Register a 3D atlas image to a stack of slices.  This uses polynomial
+% contrast transforms on each slice, and missing data estimation on each
+% slice with an EM algorithm.  We compute a 3D diffeomorphism of the atlas,
+% a 3D affine transformation of the atlas, a 2D diffeomorphism of each
+% slice (typically restricted to identity), and a 2D affine transformation
+% of each slice (typically restricted to rigid).
+% 
+% Note most arguments are specified via a config file.  See example config
+% file for details.
+% 
+% arguments:
+% template_name: Filename of 3D template image in vtk format.
+% target_dir: directory containing 2D low resolution images and geometry 
+%             csv information files
+% pattern:    A glob pattern (e.g. with wildcards) to identify 2D images
+%             used for registration.
+% config_file: File location
+% output_dir: Directory to output saved data.
+% nonrigid_thick_only: Boolean parameter that specifies.
+% 
+% outputs:
+%             No outputs but saves transformation data to output_dir.
+%
+%
+% 
+% Note:
 % In addition to normal registration, we want to have a second pass of
 % registration
 % here we want to incorporate some manually painted labels
