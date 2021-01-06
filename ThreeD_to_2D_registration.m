@@ -283,6 +283,7 @@ for downloop = 1 : 3
     
     
     % note this currently assumes zero centered
+    % as of 
     dxI = [xI(2)-xI(1), yI(2)-yI(1), zI(2)-zI(1)]*downI;
     nxI = [size(I,2),size(I,1),size(I,3)];
     xI = (0:nxI(1)-1)*dxI(1);
@@ -291,6 +292,7 @@ for downloop = 1 : 3
     xI = xI - mean(xI);
     yI = yI - mean(yI);
     zI = zI - mean(zI);
+    
     
     danfigure(1);
     sliceView(xI,yI,zI,I);
@@ -824,7 +826,16 @@ for downloop = 1 : 3
             gradL = zeros(size(L));
         end
         
-        for f = 1 : length(files)
+        slices = 1 : length(files);
+        
+        if isfield(config.DEFAULT,'slice_sampling') && (str2double(config.DEFAULT.slice_sampling) > 0)
+            slices = slices(randperm(length(files),str2double(config.DEFAULT.slice_sampling)));
+            threeDfactor = length(files)/length(slices);
+        else
+            threeDfactor = 1.0;
+        end
+        
+        for f = slices
             % parfor f = 1 : length(files) % haven't tried yet
             edit_this_slice = edit_mode && ~isempty(edit_info{f});
             if edit_this_slice
@@ -966,8 +977,8 @@ for downloop = 1 : 3
                 end
             end
             
-            
-            if (it == 1)% this is just for a first initialization!
+            % initialize the coeffs if they don't exist yet
+            if ~exist('coeffs','var') || length(coeffs) < f || isempty(coeffs{f})% this is just for a first initialization!
                 WM{f} = piM*ones(size(J{f},1),size(J{f},2));
                 WA{f} = piA*ones(size(J{f},1),size(J{f},2));
                 WB{f} = piB*ones(size(J{f},1),size(J{f},2));
@@ -987,7 +998,6 @@ for downloop = 1 : 3
                 CB{f} = zeros(size(CB{f}));
                 end
             end
-            
             
             
             fSAphiI{f} = reshape(D*coeffs{f},size(J{f}));
@@ -1270,48 +1280,46 @@ for downloop = 1 : 3
                 showlist =  unique([showlist, thickones]);
                 ntoshow = length(showlist);
             end
+            
+            % this figure has a problem when subsampling
+            danfigure(4554); % need to make sure this figure is created
             if any(f==showlist)
-                if f == showlist(1);
-                    showcount = 1;
-                end
+                showind = find(f==showlist,1,'first');
+
                 danfigure(4554);
-%                 pos = get(4554,'position');
-%                 pos(3) = 960*2;
-%                 set(4554,'position',pos);
                 % show the target
-                subplotdan(4,ntoshow,showcount);
+                subplotdan(4,ntoshow,showind);
                 imagesc(xJ{f},yJ{f},J{f})
                 axis image
                 axis off
                 % show the atlas
-                subplotdan(4,ntoshow,showcount+ntoshow);
+                subplotdan(4,ntoshow,showind+ntoshow);
                 imagesc(xJ{f},yJ{f},fSAphiI{f});
                 axis image
                 axis off;
                 % now the error
-                subplotdan(4,ntoshow,showcount+ntoshow*2);
+                subplotdan(4,ntoshow,showind+ntoshow*2);
                 imagesc(xJ{f},yJ{f},err{f}/2*3 + 0.5);
                 axis image
                 axis off;
                 % now the weight
-                subplotdan(4,ntoshow,showcount+ntoshow*3);
+                subplotdan(4,ntoshow,showind+ntoshow*3);
                 imagesc(xJ{f},yJ{f},cat(3,WM{f}.*WMask{f},WA{f}.*WMask{f},WB{f}.*WMask{f}));
                 axis image
                 axis off;
                 
-                showcount = showcount + 1;
                 
-                %                 if f == showlist(end)
-                %                     drawnow;
-                %                 end
             end
             
             % show the error for all
             % this is actually really slow since its so many plots
             % even making the subplots is slow
+            % instead we create axes and figures only once, then set their
+            % data directly later
             if save_frames % only draw the figures if I'm gonna save them
                 danfigure(4559);
-                if it == 1
+                create_data = ~exist('herrAll','var') || length(herrAll) < f || ~isgraphics(herrAll(f));
+                if create_data
                     subplotdan(ceil(sqrt(length(files))),ceil(sqrt(length(files))),f);
                     herrAll(f) = imagesc(xJ{f},yJ{f},err{f}/2*3 + 0.5);
                     % combine these axis image and off
@@ -1321,14 +1329,14 @@ for downloop = 1 : 3
                 end
                 
                 danfigure(6666);
-                if it == 1
+                if create_data
                     subplotdan(ceil(sqrt(length(files))),ceil(sqrt(length(files))),f);
                     hJAll(f) = imagesc(xJ{f},yJ{f},J{f});
                     % combine these axis image and off
                     axis image off;
                 end
                 danfigure(6667);
-                if it == 1
+                if create_data
                     subplotdan(ceil(sqrt(length(files))),ceil(sqrt(length(files))),f);
                     hIAll(f) = imagesc(xJ{f},yJ{f},fSAphiI{f});
                     % combine these axis image and off
@@ -1340,7 +1348,7 @@ for downloop = 1 : 3
                 
                 % weight for all
                 danfigure(4560);
-                if it == 1
+                if create_data
                     subplotdan(ceil(sqrt(length(files))),ceil(sqrt(length(files))),f);
                     hWeightAll(f) = imagesc(xJ{f},yJ{f},cat(3,WM{f}.*WMask{f},WA{f}.*WMask{f},WB{f}.*WMask{f}));
                     axis image off;
@@ -1357,7 +1365,7 @@ for downloop = 1 : 3
                     elseif size(show,3) == 2
                         show = cat(3,show,show(:,:,1));
                     end
-                    if it == 1
+                    if create_data
                         subplotdan(ceil(sqrt(length(files))),ceil(sqrt(length(files))),f);                        
                         hLabelAll(f) = imagesc(xJ{f},yJ{f},show,[0,1]);
                         axis image off;
@@ -1368,7 +1376,7 @@ for downloop = 1 : 3
             end
             
             % one example figure that I can see
-            if f == 50
+            if f == 50 && 0
                 danfigure(234598+1);
                 imagesc(xJ{f},yJ{f},err{f}/2*3 + 0.5);
                 axis image
@@ -1574,7 +1582,8 @@ for downloop = 1 : 3
         
         % now we start updates for the whole image
         % update A
-        e = ([1;1;1;0]*[1,1,1,0]*eLI + [1;1;1;0]*[0,0,0,1]*eTI);
+        % note the 3D factor will amplify this gradient for fewer slices
+        e = ([1;1;1;0]*[1,1,1,0]*eLI + [1;1;1;0]*[0,0,0,1]*eTI)*threeDfactor;
         if it > min(start_2d_diffeo,start_3d_diffeo)
             e = e*post_affine_reduce;
         end
@@ -1608,6 +1617,12 @@ for downloop = 1 : 3
             stepA(1:3,4) = stepA(1:3,4)/normTI*normTIsquash;
         end
         A = A*expm(-stepA);
+        
+        % TODO
+        % metric for making this update coordinate system independent
+        % instead of arbitrary scaling above
+        % workaround, use the arbitrary scaling, but make sure we are not
+        % sensitive to position of the origin
         
         
         
@@ -1678,9 +1693,9 @@ for downloop = 1 : 3
             grady = ifftn(   Kp.*(fftn(grady).*K + vtyhat(:,:,:,t)/sigmaR^2)   ,'symmetric');
             gradz = ifftn(   Kp.*(fftn(gradz).*K + vtzhat(:,:,:,t)/sigmaR^2)   ,'symmetric');
             
-            stepx = eVI*gradx;
-            stepy = eVI*grady;
-            stepz = eVI*gradz;
+            stepx = eVI*gradx*threeDfactor; % the 3D factor will amplify if there are fewer slices
+            stepy = eVI*grady*threeDfactor;
+            stepz = eVI*gradz*threeDfactor;
             
             % squash it
             % maybe the squashing is really upping the reg energy, not sure
@@ -1770,44 +1785,116 @@ for downloop = 1 : 3
         
         
         
-        
-        % apply this constraint, average should be 0 (expressed in the gobal affine)
-        logAJ = zeros(size(AJ));
-        for f = 1 : length(files)
-            logAJ(:,:,f) = real(logm(AJ(:,:,f)));
-        end
-        meanLogAJ = mean(logAJ,3);
-%         logAJ = bsxfun(@minus,logAJ,meanLogAJ);
+        if (isfield(config.DEFAULT,'factorization') && strcmp(config.DEFAULT.factorization,'1')) || ~isfield(config.DEFAULT,'factorization')
 
-        % maybe what would be better is if they are not zero mean subtract the
-        % mean from them and add it to A
-%         for f = 1 : length(files)
-%             AJ(:,:,f) = expm(logAJ(:,:,f));
-%         end
-        
-        % it looks like all the "low contrast" slices are moving up for no
-        % apparent reason
-        % could it be that that are sliding up because the others are being
-        % pushed down?  I believe the below approach can fix this
-        
-        
-        % this is the approach used in initialization
-        themeanAJ = expm(meanLogAJ);
-        % we want to "subtract" the mean from AJ and "add" it to A
-        for i = 1 : length(files)
-            AJ(:,:,i) = AJ(:,:,i)/themeanAJ; % inverse on the right
-        end
-        A = [themeanAJ(1,1:2),0,themeanAJ(1,3);
-            themeanAJ(2,1:2),0,themeanAJ(2,3);
-            0,0,1,0;
-            0,0,0,1]*A; % forward on the left
+            % apply this constraint, average should be 0 (expressed in the gobal affine)
+            logAJ = zeros(size(AJ));
+            for f = 1 : length(files)
+                logAJ(:,:,f) = real(logm(AJ(:,:,f)));
+            end
+            meanLogAJ = mean(logAJ,3);
+    %         logAJ = bsxfun(@minus,logAJ,meanLogAJ);
 
-            
-        % note that there's another issue here
-        % which is that if the first moment of these translations in Z is not zero, it could
-        % be modelled as an affine in A
-        % so I still am overparameterized
-        % so maybe I should subtract the first moment also
+            % maybe what would be better is if they are not zero mean subtract the
+            % mean from them and add it to A
+    %         for f = 1 : length(files)
+    %             AJ(:,:,f) = expm(logAJ(:,:,f));
+    %         end
+
+            % it looks like all the "low contrast" slices are moving up for no
+            % apparent reason
+            % could it be that that are sliding up because the others are being
+            % pushed down?  I believe the below approach can fix this
+
+
+            % this is the approach used in initialization
+            themeanAJ = expm(meanLogAJ);
+            % we want to "subtract" the mean from AJ and "add" it to A
+            for i = 1 : length(files)
+                AJ(:,:,i) = AJ(:,:,i)/themeanAJ; % inverse on the right
+            end
+            A = [themeanAJ(1,1:2),0,themeanAJ(1,3);
+                themeanAJ(2,1:2),0,themeanAJ(2,3);
+                0,0,1,0;
+                0,0,0,1]*A; % forward on the left
+
+            % note, december 9 2020
+            % we actually would like to do the opposite
+            % that is
+            % take any shear in A and add it to the AJ
+            % we also want to take any xy rotation in A and add it to the AJ
+            % 
+
+
+            % note that there's another issue here
+            % which is that if the first moment of these translations in Z is not zero, it could
+            % be modelled as an affine in A
+            % so I still am overparameterized
+            % so maybe I should subtract the first moment also
+        end
+        
+        % enforce affine model
+        if isfield(config.DEFAULT,'affine_model')
+            if strcmp(config.DEFAULT.affine_model,'1') % rigid
+                [U,S,V] = svd(A(1:3,1:3));
+                A(1:3,1:3) = U*V';
+            elseif strcmp(config.DEFAULT.affine_model,'2') % isotropic
+                [U,S,V] = svd(A(1:3,1:3));
+                meanS = exp(mean(log(diag(S))));
+                A(1:3,1:3) = U*diag([1,1,1]*meanS)*V';
+            elseif strcmp(config.DEFAULT.affine_model,'3') % isotropic, no rotation, and no xy shift
+                
+                % adjust for the scale
+                [U,S,V] = svd(A(1:3,1:3));
+                meanS = exp(mean(log(diag(S))));
+                A(1:3,1:3) = U*diag([1,1,1]*meanS)*V';
+                
+                % we have to adjust for rotation too
+                % the model says "up must go up"
+                % in the atlas, we have defined up as xhat
+                % we want this to point in the y direction
+                % we wayt to fix it by rotating on the left in the xy plane
+                % because this can be undone by a 2d rotation
+                [U,S,V] = svd(A(1:3,1:3));
+                R = U*V';
+                myvec = R(1:2,1);
+                myvec = myvec/sqrt(sum(myvec.^2));
+                mygoal = double(abs(myvec) == max(abs(myvec)));
+                % now I need to rotate the first to match the second
+                theta = acos( sum(myvec.*mygoal) );
+                rot = [cos(theta),-sin(theta);
+                    sin(theta),cos(theta)];
+                if norm(rot*myvec - mygoal) > norm(rot'*myvec - mygoal)
+                    rot = rot';
+                end
+                Rot = [[rot,zeros(2,2)];0,0,1,0;0,0,0,1];
+                % apply rot to A
+                A = Rot*A;
+                % apply inverse to AJ
+                for i = 1 : length(files)
+                    AJ(:,:,i) = Rot([1,2,4],[1,2,4])'*AJ(:,:,i);
+                end
+
+                
+                
+                xyshift = A(1:2,end);
+                % move any xy shift into the slices, this may be important
+                % only on the first iteration
+                for i = 1 : length(files)
+                    AJ(1:2,end,i) = AJ(1:2,end,i) + xyshift;
+                end
+                A(1:2,end) = 0;           
+               
+                
+                
+
+                
+                
+            end
+        end
+        
+        
+        
         
         save([prefix 'A.mat'],'AJ','A')
         
