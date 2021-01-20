@@ -68,7 +68,7 @@ close all;
 fclose all;
 
 % where to put outputs
-output_prefix = 'm6328_v02_output/';
+output_prefix = 'm6328_v03_output/';
 
 % 2D data, a directory
 data_2D_directory = '/home/dtward/data/csh_data/marmoset/m6328/slices/';
@@ -394,7 +394,7 @@ for m = 1 : size(mapping_3D_pairs,1)
     % contrast
     order = opt.order;
 
-    A0 = eye(4);
+    A0_ = eye(4);
     prior = opt.prior;
 
     
@@ -402,7 +402,7 @@ for m = 1 : size(mapping_3D_pairs,1)
     [phiiAix,phiiAiy,phiiAiz,Aphix,Aphiy,Aphiz,A,vtx,vty,vtz] = ThreeD_to_3D_registration(...
         xI,yI,zI,I,...
         xJ,yJ,zJ,J,...
-        A0,...
+        A0_,...
         nt,a,p,...
         sigmaR,sigmaM,sigmaA,sigmaB,prior,...
         order,...
@@ -506,8 +506,8 @@ for i = 1 : length(data_2D)
     if i == data_2D_register
         continue
     end
-%     align_2D_intermodality(data_2D_directory, data_2D{data_2D_register}{2}, data_2D{i}{2}, output_prefix);
-    align_2D_intermodality_test(data_2D_directory, data_2D{data_2D_register}{2}, data_2D{i}{2}, output_prefix);
+    align_2D_intermodality(data_2D_directory, data_2D{data_2D_register}{2}, data_2D{i}{2}, output_prefix);
+%     align_2D_intermodality_test(data_2D_directory, data_2D{data_2D_register}{2}, data_2D{i}{2}, output_prefix);
 end
 
 %%
