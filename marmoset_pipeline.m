@@ -68,7 +68,7 @@ close all;
 fclose all;
 
 % where to put outputs
-output_prefix = 'm6328_v01_output/';
+output_prefix = 'm6328_v02_output/';
 
 % 2D data, a directory
 data_2D_directory = '/home/dtward/data/csh_data/marmoset/m6328/slices/';
@@ -123,7 +123,7 @@ opts = struct('common_to_target',true,...
         'nt',5,'a',400,'apfactor',2,'p',2,...
         'sigmaR',2e3,'sigmaM',0.5,'sigmaA',2.5,'sigmaB',1.0,...
         'order',3,'prior',[0.9,0.05,0.05]);
-    
+
 mapping_3D_options = {
     opts
     };
@@ -133,7 +133,7 @@ preprocessing_3D_options = {
         struct('name','resample_isotropic'),
         struct('name','bias_correct','which','atlas','scale',2000),
         struct('name','mask','which','atlas'),
-        struct('name','pad','which','atlas','n',10),        
+        struct('name','pad','which','atlas','n',10),
     }
 };
 % for outputting coordinate grids

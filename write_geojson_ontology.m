@@ -26,6 +26,10 @@ end
 
 fid = fopen(fname,'wt');
 fprintf(fid,'{\n'); % start of the file, no leading space
+
+
+
+
 fprintf(fid,'  "type": "FeatureCollection",\n'); % start of features, 2 leading spaces
 fprintf(fid,'  "features":\n'); % start of features, 2 leading spaces
 fprintf(fid,'  [\n'); % open bracket, same indent as above

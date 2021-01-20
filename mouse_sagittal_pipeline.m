@@ -58,6 +58,7 @@
 %
 
 
+
 addpath Functions/plotting
 addpath Functions/downsample
 addpath Functions/vtk
@@ -753,7 +754,6 @@ disp('Finished constructing uniform 2D sampling grid')
 % i = id;
 % 471
 close all;
-
 
 
 

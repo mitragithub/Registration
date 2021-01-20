@@ -99,7 +99,7 @@ if length(size(I))==4
     for i = 1 : length(slices)
         s = slices(i);
         subplotdan(3,n,i);
-        imagesc(x,y,squeeze(I(:,:,s,:)));
+        imagesc(x,y,squeeze(I(:,:,s,:)),[0,1]);
         axis image off;
     end
     
@@ -110,7 +110,7 @@ if length(size(I))==4
     for i = 1 : length(slices)
         s = slices(i);
         subplotdan(3,n,i+n);
-        imagesc(z,y,squeeze(I(:,s,:,:)));
+        imagesc(z,y,squeeze(I(:,s,:,:)),[0,1]);
         axis image off;        
     end
     
@@ -121,7 +121,7 @@ if length(size(I))==4
     for i = 1 : length(slices)
         s = slices(i);
         subplotdan(3,n,i+n+n);
-        imagesc(z,x,squeeze(I(s,:,:,:)));
+        imagesc(z,x,squeeze(I(s,:,:,:)),[0,1]);
         axis image off;        
     end
     

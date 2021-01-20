@@ -1,4 +1,4 @@
-function affine_for_initial_alignment(atlas_file, input_dir, pattern, detailed_output_dir, downs, niter,A)
+function affine_for_initial_alignment(atlas_file, input_dir, pattern, detailed_output_dir, downs, niter, A, model)
 % Computes an initial affine transform to align a 3D atlas to a 3D stack of
 % slices.  This code first constructs a stack of slices based on previous
 % slice alignment parameters.  Then it transforms the atlas to match these
@@ -21,6 +21,8 @@ function affine_for_initial_alignment(atlas_file, input_dir, pattern, detailed_o
 % A:          Initial guess of affine transformation.  This should be
 %             chosen based on permutations of axes.  e.g. coronal images
 %             versus sagittal images.
+% model:      0 for general affine (default), 1 for rigid, 2 for isotropic
+%             scaling
 %
 % outputs:
 %             No outputs but affine transformation matrix is written to
@@ -29,6 +31,10 @@ function affine_for_initial_alignment(atlas_file, input_dir, pattern, detailed_o
 addpath Functions/plotting
 addpath Functions/downsample
 addpath Functions/vtk
+
+if nargin < 8
+    model = 0;
+end
 
 % get the template
 [xI,yI,zI,I,title_,names] = read_vtk_image(atlas_file);
@@ -265,5 +271,5 @@ sliceView(xJ,yJ,zJ,AI)
 % end
 
 %%
-A = ThreeD_to_3D_affine_registration_GN(xI,yI,zI,I,xJ,yJ,zJ,Jnorm,A,downs/mindown,niter,0.25);
+A = ThreeD_to_3D_affine_registration_GN(xI,yI,zI,I,xJ,yJ,zJ,Jnorm,A,downs/mindown,niter,0.25,model);
 save([detailed_output_dir 'initializer_A.mat'],'AJ','A');

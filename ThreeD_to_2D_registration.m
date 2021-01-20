@@ -267,8 +267,22 @@ for downloop = 1 : 3
             L = tmp((n_(1)-1)/2+1:end-(n_(1)-1)/2, (n_(2)-1)/2+1:end-(n_(2)-1)/2, (n_(3)-1)/2+1:end-(n_(3)-1)/2,:);
         end
     end
+    
+    % here we will do padding and downsampling and appropriately
+    % modify the domain
+    
     I = padarray(I,[1,1,1]*downI,-Imean/Istd,'both'); % zero pad (actually with - mean)
-    [~,~,~,I] = downsample(1:size(I,2),1:size(I,1),1:size(I,3),I,downI*[1,1,1]);
+    dxI = [xI(2)-xI(1),yI(2)-yI(1),zI(2)-zI(1)];
+    while length(xI) < size(I,2)
+        xI = [xI(1)-dxI(1),xI,xI(end)+dxI(1)];
+    end
+    while length(yI) < size(I,1)
+        yI = [yI(1)-dxI(2),yI,yI(end)+dxI(2)];
+    end
+    while length(zI) < size(I,3)
+        zI = [zI(1)-dxI(3),zI,zI(end)+dxI(3)];
+    end
+    [xI,yI,zI,I] = downsample(xI,yI,zI,I,downI*[1,1,1]);
     if edit_mode
         L_ = padarray(L,[1,1,1,0]*downI,0,'both');
         for l = 1 : nL
@@ -283,15 +297,17 @@ for downloop = 1 : 3
     
     
     % note this currently assumes zero centered
-    % as of 
-    dxI = [xI(2)-xI(1), yI(2)-yI(1), zI(2)-zI(1)]*downI;
+    % as of jan 6 2020 I will support arbitrary origins for the atlas
+%     dxI = [xI(2)-xI(1), yI(2)-yI(1), zI(2)-zI(1)]*downI;
+%     nxI = [size(I,2),size(I,1),size(I,3)];
+%     xI = (0:nxI(1)-1)*dxI(1);
+%     yI = (0:nxI(2)-1)*dxI(2);
+%     zI = (0:nxI(3)-1)*dxI(3);
+%     xI = xI - mean(xI);
+%     yI = yI - mean(yI);
+%     zI = zI - mean(zI);
+    dxI = [xI(2)-xI(1), yI(2)-yI(1), zI(2)-zI(1)];
     nxI = [size(I,2),size(I,1),size(I,3)];
-    xI = (0:nxI(1)-1)*dxI(1);
-    yI = (0:nxI(2)-1)*dxI(2);
-    zI = (0:nxI(3)-1)*dxI(3);
-    xI = xI - mean(xI);
-    yI = yI - mean(yI);
-    zI = zI - mean(zI);
     
     
     danfigure(1);
@@ -400,7 +416,10 @@ for downloop = 1 : 3
             LJ{f} = tmp;
         end
         
-        
+        % domain for each image J
+        % TODO: support non zero centered, i.e. read from geometry file
+        % note that before jan 2021, all this data was 0 centered in
+        % geometry file, so this would be no change
         nxJ{f} = [size(J{f},2),size(J{f},1)];
         xJ{f} = (0 : nxJ{f}(1)-1)*dxJ(1);
         yJ{f} = (0 : nxJ{f}(2)-1)*dxJ(2);
@@ -1114,9 +1133,6 @@ for downloop = 1 : 3
                 end
             end
             grad_AJ_f = gradAJ(1:3,[1,2,4]);
-            % if rigid
-            grad_AJ_f(1:2,1:2) = grad_AJ_f(1:2,1:2) - grad_AJ_f(1:2,1:2)';
-            gradAJall(:,:,f) = grad_AJ_f;
             
             
             
@@ -1214,36 +1230,109 @@ for downloop = 1 : 3
             %%
             % now update the affine for this slice (maybe should be at end)
             % update affine
-            e = ([1;1;0]*[1,1,0]*eLJ + [1;1;0]*[0,0,1]*eTJ);
-            if it > min(start_2d_diffeo,start_3d_diffeo)
-                e = e*post_affine_reduce;
-            end
-            %             AJ(:,:,f) = AJ(:,:,f)*expm(-gradAJall(:,:,f).*e);
-            % normalize, use a simple squashing function with reasonable
-            % max, which is identity near 0
-            % how about this, really simple!
-            % f(x) = ax/(a + x)
-            % for large x it goes to a
-            % for small x it is x
-            stepAJ = grad_AJ_f.*e;
-            normLJ = sqrt(sum(sum(stepAJ(1:2,1:2).^2)));
-            normLJsave(f,it) = sqrt(sum(sum(grad_AJ_f(1:2,1:2).^2)));
-            normLJstepsave(f,it) = normLJ;
-            if normLJ > 0
-                normLJsquash = LJmax*normLJ/(LJmax + normLJ);
-                stepAJ(1:2,1:2) = stepAJ(1:2,1:2)/normLJ*normLJsquash;
-            end
+            do_standard_gradient = 1;
+            if do_standard_gradient
+                % if rigid (doing this later)
+                grad_AJ_f(1:2,1:2) = grad_AJ_f(1:2,1:2) - grad_AJ_f(1:2,1:2)';
+                gradAJall(:,:,f) = grad_AJ_f;
+
+                e = ([1;1;0]*[1,1,0]*eLJ + [1;1;0]*[0,0,1]*eTJ);
+                if it > min(start_2d_diffeo,start_3d_diffeo)
+                    e = e*post_affine_reduce;
+                end
+                %             AJ(:,:,f) = AJ(:,:,f)*expm(-gradAJall(:,:,f).*e);
+                % normalize, use a simple squashing function with reasonable
+                % max, which is identity near 0
+                % how about this, really simple!
+                % f(x) = ax/(a + x)
+                % for large x it goes to a
+                % for small x it is x
+                stepAJ = grad_AJ_f.*e;
+                normLJ = sqrt(sum(sum(stepAJ(1:2,1:2).^2)));
+                normLJsave(f,it) = sqrt(sum(sum(grad_AJ_f(1:2,1:2).^2)));
+                normLJstepsave(f,it) = normLJ;
+                if normLJ > 0
+                    normLJsquash = LJmax*normLJ/(LJmax + normLJ);
+                    stepAJ(1:2,1:2) = stepAJ(1:2,1:2)/normLJ*normLJsquash;
+                end
+
+                normTJ = sqrt(sum(stepAJ(1:2,3).^2));
+                normTJsave(f,it) = sqrt(sum(sum(grad_AJ_f(1:2,3).^2)));
+                normTJstepsave(f,it) = normTJ;
+                if normTJ > 0
+                    normTJsquash = TJmax*normTJ/(TJmax + normTJ);
+                    stepAJ(1:2,3) = stepAJ(1:2,3)/normTJ*normTJsquash;
+                end
+
             
-            normTJ = sqrt(sum(stepAJ(1:2,3).^2));
-            normTJsave(f,it) = sqrt(sum(sum(grad_AJ_f(1:2,3).^2)));
-            normTJstepsave(f,it) = normTJ;
-            if normTJ > 0
-                normTJsquash = TJmax*normTJ/(TJmax + normTJ);
-                stepAJ(1:2,3) = stepAJ(1:2,3)/normTJ*normTJsquash;
+            else
+                % I want to do an optical flow metric update here too
+                % I can use the transformed images, its almost the same as
+                % gradient calculations
+                % I think this approach is significantly slowing down
+                % I am now computing only half the elements
+                gAJ = zeros(6,6);
+                I_ = SAphiI{f};
+                Ix_ = (circshift(I_,[0,-1]) - circshift(I_,[0,1]))/2.0/dxJ(f,1);
+                Iy_ = (circshift(I_,[-1,0]) - circshift(I_,[1,0]))/2.0/dxJ(f,2);
+                DI_ = cat(3,Ix_,Iy_);
+                XYI_ = cat(3,AJiX,AJiY,AJiX*0+1);
+
+                count0 = 0;
+                for c0 = 1 : 3
+                    for r0 = 1:2
+                        count0 = count0 + 1;
+                        tmp = DI_(:,:,r0) .* XYI_(:,:,c0);
+                        count1 = 0;                    
+                        for c1 = 1 : 3
+                            for r1 = 1 : 2
+                                count1 = count1 + 1;
+                                if count1 > count0
+                                    continue
+                                end
+                                gAJ(count0,count1) = sum(sum( tmp.* DI_(:,:,r1) .* XYI_(:,:,c1))) * prod(dxJ(f,:));
+                                gAJ(count1,count0) = gAJ(count0,count1);
+                            end
+                        end
+
+                    end
+                end
+                gAJ = (gAJ + gAJ')/2.0;
+                grad_AJ_f_ = grad_AJ_f(1:2,1:3);
+                stepAJ_ = gAJ \ grad_AJ_f_(:);
+                gradAJall(:,:,f) = grad_AJ_f;
+                stepAJ = zeros(3,3);
+
+                eAJ = 0.01;
+                stepAJ(1:2,1:3) = reshape(stepAJ_,[2,3]);
+                e = eAJ;
+                if it > min(start_2d_diffeo,start_3d_diffeo)
+                    e = e*post_affine_reduce;
+                end
+                stepAJ = stepAJ * e;
+                stepAJ(1:2,1:2) = stepAJ(1:2,1:2) - stepAJ(1:2,1:2)'; % for rigid            
+                % if there is is no gradient, set the step to zero, this is
+                % fine
+                if any(isnan(stepAJ(:)))
+                    % if there's no gradient, just set step to 0, no problem
+                    if all(grad_AJ_f(:)==0)
+                        stepAJ = 0.0;
+                    else % if there is a gradient, this is a problem
+                        stepAJ = 0.0;
+                        warning(['nan in slice alignment on slice ' num2str(f)])
+                    end
+                end
             end
+
+
+
             if it > start_2d_affine
                 AJ(:,:,f) = AJ(:,:,f)*expm(-stepAJ);
             end
+            
+           
+            
+            
             
             % update coeffs
             coeffs{f} = (D'*bsxfun(@times,D,WM{f}(:).*WMask{f}(:)) + eye(order)*1e-3)\(D'*bsxfun(@times,reshape(J{f},numel(SAphiI{f}),size(J{f},3)),WM{f}(:).*WMask{f}(:)));
@@ -1580,6 +1669,9 @@ for downloop = 1 : 3
         end % of file loop
         
         
+        
+        
+        
         % now we start updates for the whole image
         % update A
         % note the 3D factor will amplify this gradient for fewer slices
@@ -1618,11 +1710,76 @@ for downloop = 1 : 3
         end
         A = A*expm(-stepA);
         
-        % TODO
-        % metric for making this update coordinate system independent
-        % instead of arbitrary scaling above
-        % workaround, use the arbitrary scaling, but make sure we are not
-        % sensitive to position of the origin
+%         % TODO
+%         % metric for making this update coordinate system independent
+%         % instead of arbitrary scaling above
+%         % workaround, use the arbitrary scaling, but make sure we are not
+%         % sensitive to position of the origin
+%         %
+%         % the version I want to use is to integrate over the domain of the
+%         % image
+%         if it == 1 % first iteration compute my metric
+%             I_x = (circshift(I,[0,-1,0]) - circshift(I,[0,1,0]))/2.0/dxI(1);
+%             I_y = (circshift(I,[-1,0,0]) - circshift(I,[1,0,0]))/2.0/dxI(2);
+%             I_z = (circshift(I,[0,0,-1]) - circshift(I,[0,0,1]))/2.0/dxI(3);
+%             DI = cat(4,I_x,I_y,I_z);
+%             XYZI = cat(4,XI,YI,ZI,ZI*0+1);
+%             g_id = zeros(12,12);
+%             gX_id = zeros(12,12);
+%             count0 = 0;
+%             for c0 = 1 : 4
+%                 for r0 = 1 : 3
+%                     count0 = count0 + 1;
+%                     count1 = 0;
+%                     for c1 = 1 : 4
+%                         for r1 = 1 : 3
+%                             count1 = count1 + 1;
+%                             
+%                             g_id(count0,count1) = sum(sum(sum(DI(:,:,:,r0) .* XYZI(:,:,:,c0) .* DI(:,:,:,r1) .* XYZI(:,:,:,c1))))*prod(dxI);
+% %                             gX_id = ; % try here with DI is the identity
+% %                             matrix
+% 
+%                         end
+%                     end
+%                     
+%                 end
+%             end
+%  
+%         end
+%         g_id = (g_id + g_id')/2.0;
+%         
+%         % we need a big A which is 12x12
+%         Ai = inv(A);
+%         count0 = 0;
+%         for c0 = 1 : 4
+%             for r0 = 1 : 3
+%                 count0 = count0 + 1;
+%                 Ei = ((1:4)==r0)' * ((1:4)==c0);
+%                 AEi = Ai*Ei;
+%                 a = AEi(1:3,1:4); a = a(:);
+%                 AA(:,count0) = a;
+%             end        
+%         end
+%         eAI = 0.1;
+%         g_A = AA' * g_id * AA;
+%         a = gradA(1:3,1:4);
+%         stepA_ = (g_A\a(:));
+%         e = eAI*threeDfactor;
+%         if it > min(start_2d_diffeo,start_3d_diffeo)
+%             e = e*post_affine_reduce;
+%         end
+%         stepA_ = stepA_*e;
+%         
+%         stepA = zeros(4,4);
+%         stepA(1:3,1:4) =  reshape(stepA_,[3,4]);
+%         
+% 
+%         % squashing for stability?
+%         A = A*expm(-stepA);
+%         stepA
+%         A
+        
+        
         
         
         
@@ -1724,6 +1881,7 @@ for downloop = 1 : 3
         disp(['Iter: ' num2str(it) ', energy: ' num2str(E) ', matching energy: ' num2str(EM) ', reg energy: ' num2str(ER) ', regJ energy: ' num2str(sum(ERJ))] )
         
         %%
+        if save_frames
         danfigure(323);
         sliceView(xI,yI,zI,gradI);
         
@@ -1756,7 +1914,7 @@ for downloop = 1 : 3
         subplot(2,2,4)
         plot(normTIstepsave)
         title('norm grad of step TI')
-        
+        end
         
         % save some frames and write gifs
         if it == 1
@@ -1842,7 +2000,7 @@ for downloop = 1 : 3
                 [U,S,V] = svd(A(1:3,1:3));
                 meanS = exp(mean(log(diag(S))));
                 A(1:3,1:3) = U*diag([1,1,1]*meanS)*V';
-            elseif strcmp(config.DEFAULT.affine_model,'3') % isotropic, no rotation, and no xy shift
+            elseif strcmp(config.DEFAULT.affine_model,'3') % isotropic, no rotation about up, and no xy shift
                 
                 % adjust for the scale
                 [U,S,V] = svd(A(1:3,1:3));

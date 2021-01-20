@@ -1,4 +1,4 @@
-function A = ThreeD_to_3D_affine_registration_GN(xI,yI,zI,I,xJ,yJ,zJ,J,A0,downs,niter,e)
+function A = ThreeD_to_3D_affine_registration_GN(xI,yI,zI,I,xJ,yJ,zJ,J,A0,downs,niter,e,model)
 % This function will register two image volumes using an affine
 % transformation.  It will use linear contrast transforms and estimate
 % missing data using an EM algorithm.  Images are assumed to have one
@@ -34,6 +34,8 @@ function A = ThreeD_to_3D_affine_registration_GN(xI,yI,zI,I,xJ,yJ,zJ,J,A0,downs,
 %             all levels.
 % e:          Step size for Gauss Newton optimization.  This is a parameter
 %             of order 1.  Defaults to 0.5.
+% model:      model for affine transform. defaults to 0 (general affine).
+%             options are 1 (rigid) and 2 (isotropic scale) 
 %
 % affine registration between I and J
 % run at several different stages of downsampling
@@ -75,6 +77,9 @@ if nargin < 9
 end
 if nargin < 12
     e = 0.5;
+end
+if nargin < 13
+    model = 0;
 end
 if length(niter) == 1
     niter = ones(size(downs))*niter;
@@ -181,6 +186,16 @@ for downloop = 1 : length(downs)
         Ai(1:3,1:4) = Ai(1:3,1:4) - e * step;
         A = inv(Ai);
         
+        % other models
+        if model > 0
+            [U,S,V] = svd(A(1:3,1:3));
+            if model == 1 % rigid
+                A(1:3,1:3) = U * V';
+            elseif model == 2 % uniform scale
+                meanS = exp(mean(log(diag(S))));
+                A(1:3,1:3) = U * diag([1,1,1]*meanS) * V';
+            end
+        end
         
 
         drawnow;
