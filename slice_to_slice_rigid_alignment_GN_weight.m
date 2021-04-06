@@ -51,15 +51,13 @@ addpath Functions/downsample
 
 % I = mean(I,3);
 % J = mean(J,3);
-qlim = [0.01,0.99];
-climI = quantile(I(:),qlim);
-climJ = quantile(J(:),qlim);
+
 danfigure(1);
 imagesc(xI,yI,I)
 axis image
 
 danfigure(2);
-imagesc(xJ,yJ,(J-climJ(1))/diff(climJ))
+imagesc(xJ,yJ,J)
 axis image
 
 CI = size(I,3);
@@ -108,7 +106,7 @@ for downloop = 1 : length(downs)
     xId = (1 : size(Id,2))*dxId(1); xId = xId - mean(xId);
     yId = (1 : size(Id,1))*dxId(2); yId = yId - mean(yId);
     Jd = [];
-    for c = 1 : CJ
+    for c = 1 : CI
         [~,~,Jd(:,:,c)] = downsample2D(1:size(J,2),1:size(J,1),J(:,:,c),[1,1]*d);
     end
     dxJd = dxJ*d;
@@ -130,7 +128,6 @@ for downloop = 1 : length(downs)
             F = griddedInterpolant({yId,xId},Id(:,:,c),'linear','nearest');
             AId(:,:,c) = F(Ys,Xs);
         end
-        
         
         
         
@@ -172,7 +169,7 @@ for downloop = 1 : length(downs)
         title('I')
         
         danfigure(2);
-        imagesc(xJd,yJd,(Jd-climJ(1))/diff(climJ))
+        imagesc(xJd,yJd,Jd)
         axis image
         title('J')
         
@@ -182,11 +179,11 @@ for downloop = 1 : length(downs)
         title('AI')
         
         danfigure(4);
-        imagesc(xJd,yJd,(fAId-climJ(1))/diff(climJ));
+        imagesc(xJd,yJd,fAId);
         axis image
         title('fAI')
         danfigure(5);
-        imagesc(xJd,yJd,err/2.0/diff(climJ) + 0.5)
+        imagesc(xJd,yJd,err/2.0 + 0.5)
         axis image
         title('err')
         disp(['Iteration ' num2str(it) '/' num2str(niter(downloop)) ', energy ' num2str(E)]);

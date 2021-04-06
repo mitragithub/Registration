@@ -81,8 +81,6 @@ if strcmp(type,'double')
     typestr = 'double';
 elseif strcmp(type,'single')
     typestr = 'float';
-elseif strcmp(type,'uint8');
-    typestr = 'unsigned_char';
 elseif strcmp(type,'uint16');
     typestr = 'unsigned_short';
 elseif strcmp(type,'uint32');

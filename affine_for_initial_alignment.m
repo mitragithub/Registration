@@ -40,8 +40,6 @@ nxJ0 = cellfun(@(x)str2num(x), csv_data(:,2:3));
 dxJ0 = cellfun(@(x)str2num(x), csv_data(:,5:6));
 zJ0 = cellfun(@(x)str2num(x), csv_data(:,10));
 
-% % suppose this was wrong for DK39
-% dxJ0 = dxJ0/4;
 
 % reconstruct the slices
 vars = load([detailed_output_dir 'initializer_A.mat']);
@@ -60,8 +58,7 @@ if nargin < 6
 end
 
 %%
-% loop over files and reconstruct slices into a 3D volume with approximatly
-% 200 micron resolution (i.e. 50um allen atlas downsampled by 4)
+% loop over files
 for i = 1 : length(files)
     J_ = imread([input_dir files{i}]);
     J_ = mean(double(J_)/255.0,3);
@@ -82,11 +79,11 @@ for i = 1 : length(files)
     if i == 1
         % typically we expect more slices than 50 micron spacing
         nslices = round((zJ0(end)-zJ0(1))/50/mindown);
-        J = zeros([round(max(nxJ0(:,end:-1:1)/3/mindown)), nslices]);
+        J = zeros([round(max(nxJ0/3/mindown)), nslices]);
         zJ = (0 : size(J,3)-1)*50*mindown;
         if nslices > length(files)
             nslices = length(files);
-            J = zeros([round(max(nxJ0(:,end:-1:1)/3/mindown)), nslices]);            
+            J = zeros([round(max(nxJ0/3/mindown)), nslices]);            
             dz = (zJ0(end) - zJ0(1))/nslices;
             zJ = (0 : size(J,3)-1)*dz;
         end
@@ -150,7 +147,24 @@ sliceView(xJ,yJ,zJ,Jnorm);
 %%
 close all
 
+A = eye(4);
+% permute xy, and flip z
+% this is only valid for Allen vtk atlas
+A = [0,1,0,0;
+    1,0,0,0;
+    0,0,-1,0;
+    0,0,0,1]*A;
 
+% better to start small here due to boundary issues
+A = diag([0.8,0.8,0.8,1])*A;
+
+
+% if nargin < 7
+%     eT_factor = 2e-7;
+% end
+% if nargin < 8
+%     eL_factor = 1e-14;
+% end
 
 % we need to pad this image before downsampling
 % preprocess I, I want to pad it for example
@@ -174,71 +188,6 @@ Istd = std(I(:));
 I = I - mean(I(:));
 I = I/std(I(:));
 
-%%
-% initial guess of affine transform
-A = eye(4);
-% permute xy, and flip z
-% this is only valid for Allen vtk atlas
-A = [0,1,0,0;
-    1,0,0,0;
-    0,0,-1,0;
-    0,0,0,1]*A;
-if contains(input_dir,'DK39')
-    
-%     A = eye(4);
-% permute xy, and flip z
-% this is only valid for Allen vtk atlas
-% A = [0,1,0,0;
-%     1,0,0,0;
-%     0,0,-1,0;
-%     0,0,0,1]*A;
-A = eye(4);
-% swap xz? no
-% A = [0,0,1,0;
-%     0,1,0,0;
-%     1,0,0,0
-%     0,0,0,1]*A; 
-% sway xy? no
-% A = [0,1,0,0;
-%     1,0,0,0;
-%     0,0,1,0
-%     0,0,0,1]*A; 
-% swap yz
-A = [1,0,0,0;
-    0,0,1,0;
-    0,-1,0,0
-    0,0,0,1]*A; 
-% better, got the sagittal right
-% might be good
 
-end
-
-%%
-
-% better to start small here due to boundary issues
-A = diag([0.8,0.8,0.8,1])*A;
-
-% test the initial alignment
-F = griddedInterpolant({yI,xI,zI},I,'linear','nearest');
-[XJ,YJ,ZJ] = meshgrid(xJ,yJ,zJ);
-Ai = inv(A);
-Xs = Ai(1,1)*XJ + Ai(1,2)*YJ + Ai(1,3)*ZJ + Ai(1,4);
-Ys = Ai(2,1)*XJ + Ai(2,2)*YJ + Ai(2,3)*ZJ + Ai(2,4);
-Zs = Ai(3,1)*XJ + Ai(3,2)*YJ + Ai(3,3)*ZJ + Ai(3,4);
-AI = F(Ys,Xs,Zs);
-danfigure(5)
-sliceView(xJ,yJ,zJ,J)
-danfigure(6)
-sliceView(xJ,yJ,zJ,AI)
-% keyboard
-% if nargin < 7
-%     eT_factor = 2e-7;
-% end
-% if nargin < 8
-%     eL_factor = 1e-14;
-% end
-
-%%
-keyboard
 A = ThreeD_to_3D_affine_registration_GN(xI,yI,zI,I,xJ,yJ,zJ,Jnorm,A,downs/mindown,niter,0.25);
 save([detailed_output_dir 'initializer_A.mat'],'AJ','A');

@@ -92,10 +92,9 @@ for i = 1 : length(zJ0)
     
     % J is light on dark
     [XJ,YJ] = meshgrid(xJ,yJ);
-    [~,~,ext] = fileparts(fluoro_pattern);
-    if strcmp(fluoro_pattern, ['*-F*' ext])
+    if strcmp(fluoro_pattern, '*-F*.tif')
         mask = getmask(J,0);
-    elseif strcmp(fluoro_pattern, ['*-IHC*' ext]) % dark on light
+    elseif strcmp(fluoro_pattern, '*-IHC*.tif') % dark on light
         mask = getmask(J,1);
     end
     mask =  double(mask)/sum(mask(:));

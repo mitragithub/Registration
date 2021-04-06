@@ -1,4 +1,4 @@
-function registration_pipeline_MBA(atlas_file,input_dir,output_dir,seg_file)
+function registration_pipeline_MBA(atlas_file,input_dir,config_file,detailed_output_dir,output_dir,seg_file)
 % run the rna seq mapping pipeline
 % 1. specify filename for vtk atlas
 % 2. specify directory for input images at 15 um
@@ -15,12 +15,14 @@ function registration_pipeline_MBA(atlas_file,input_dir,output_dir,seg_file)
 
 close all;
 %% 
+% pctRunOnAll maxNumCompThreads(16);
+
 if nargin < 5
     seg_file = '';
 end
 %%
 % testing on daniels computer
-config_file = 'mba_nissl_fluoro_config.ini';
+% config_file = 'mba_nissl_fluoro_config.ini';
 if nargin == 0
     seg_file = '/cis/home/dtward/Documents/ARA/Mouse_CCF/vtk/annotation_50.vtk';
     atlas_file = '/cis/home/dtward/Documents/ARA/Mouse_CCF/vtk/ara_nissl_50.vtk';
@@ -73,12 +75,6 @@ if nargin == 0
     input_dir = '/cis/home/dtward/Documents/intensity_transform_and_missing_data/csh_slices/Registration/PMD3344/INPUT_DATA/'
     output_dir = '/cis/home/dtward/Documents/intensity_transform_and_missing_data/csh_slices/Registration/PMD3344/OUTPUT/'
 
-    % xu said there were problems with 3344, but I didn't see any
-    
-%     % next problematic case was 1969
-%     input_dir = '/cis/home/dtward/Documents/intensity_transform_and_missing_data/csh_slices/Registration/PMD1969/INPUT_DATA/'
-%     output_dir = '/cis/home/dtward/Documents/intensity_transform_and_missing_data/csh_slices/Registration/PMD1969/OUTPUT/'
-    
     
     % ideally this step should be done before hand
 %     create_location_csv_MBA(input_dir, 14.72, 14.72, 20)
@@ -86,7 +82,7 @@ if nargin == 0
 end
 % detailed_output_dir = [output_dir(1:end-1),'_detailed/'];
 % Xu is doing this
-detailed_output_dir = output_dir;
+% detailed_output_dir = output_dir;
 
 
 
@@ -125,11 +121,14 @@ affine_for_initial_alignment(atlas_file, input_dir, pattern, detailed_output_dir
 close all;
 
 
-%%
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%
+% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % step 2 is to run mapping
 % let's start by matching each fluoro slice to its nearest nissl slice
 % note that this is named fluoro, but it supports fluoro or ihc
+
+
+
 nissl_pattern = pattern;
 files = dir([input_dir '*.tif']);
 files = {files.name};
@@ -143,7 +142,10 @@ for f = 1 : length(files)
     end
 end
 
+
+
 align_fluoro_to_nissl(input_dir, nissl_pattern, fluoro_pattern, detailed_output_dir);
+% align_fluoro_to_nissl_savepics_3317(input_dir, nissl_pattern, fluoro_pattern, detailed_output_dir);
 close all;
 
 
@@ -161,10 +163,9 @@ combine_nissl_and_fluoro_transforms(detailed_output_dir)
 %%
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % step 3 is to generate standard vtk outputs
-tic
 apply_deformation({seg_file,atlas_file}, input_dir, detailed_output_dir, output_dir);
 close all;
-toc
+
 
 
 return

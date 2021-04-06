@@ -64,15 +64,13 @@ if length(down)==1 && log(down)/log(2) == round(log(down)/log(2))
     end
     
 else % general downsampling case
-        
-    if length(down) == 1
-        down = [down,down,down];
-    end
+    
+    
     nxd = floor(nx./down);
     dxd = dx.*down;
-    xd = x(1:down(1):nxd(1)*down(1));
-    yd = y(1:down(2):nxd(2)*down(2));
-    zd = z(1:down(3):nxd(3)*down(3));
+    xd = x(1:down(1):nxd(1)*down);
+    yd = y(1:down(2):nxd(2)*down);
+    zd = z(1:down(3):nxd(3)*down);
     
     Id = zeros(nxd(2),nxd(1),nxd(3));
     xd = zeros(1,size(Id,2));

@@ -46,7 +46,8 @@ if length(size(I)) == 3 || size(I,4) == 1
         s = slices(i);
         subplotdan(3,n,i);
         imagesc(x,y,squeeze(I(:,:,s)),clim);
-        axis image off;        
+        axis image;
+        axis off;
     end
     
     
@@ -58,8 +59,8 @@ if length(size(I)) == 3 || size(I,4) == 1
         s = slices(i);
         subplotdan(3,n,i+n);
         imagesc(z,y,squeeze(I(:,s,:)),clim);
-        axis image off;
-        
+        axis image;
+        axis off;
     end
     
     % first index fixed
@@ -70,8 +71,8 @@ if length(size(I)) == 3 || size(I,4) == 1
         s = slices(i);
         subplotdan(3,n,i+n+n);
         imagesc(z,x,squeeze(I(s,:,:)),clim);
-        axis image off;
-        
+        axis image;
+        axis off;
     end
 end
 
@@ -100,7 +101,8 @@ if length(size(I))==4
         s = slices(i);
         subplotdan(3,n,i);
         imagesc(x,y,squeeze(I(:,:,s,:)));
-        axis image off;
+        axis image;
+        axis off;
     end
     
     % second last index fixed
@@ -111,7 +113,8 @@ if length(size(I))==4
         s = slices(i);
         subplotdan(3,n,i+n);
         imagesc(z,y,squeeze(I(:,s,:,:)));
-        axis image off;        
+        axis image;
+        axis off;
     end
     
     % first index fixed
@@ -122,7 +125,8 @@ if length(size(I))==4
         s = slices(i);
         subplotdan(3,n,i+n+n);
         imagesc(z,x,squeeze(I(s,:,:,:)));
-        axis image off;        
+        axis image;
+        axis off;
     end
     
 end

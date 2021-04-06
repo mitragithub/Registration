@@ -1,4 +1,4 @@
-function registration_pipeline_rnaseq_atlas_free_align(atlas_file,input_dir,output_dir,seg_file)
+function registration_pipeline_rnaseq_atlas_free_align(atlas_file,input_dir,config_file,detailed_output_dir,output_dir,seg_file)
 % run the rna seq mapping pipeline
 % 1. specify filename for vtk atlas
 % 2. specify directory for input images at 15 um
@@ -20,7 +20,7 @@ if nargin < 5
 end
 %%
 % testing on daniels computer
-config_file = 'rnaseq_config.ini';
+% config_file = 'rnaseq_config.ini';
 if nargin == 0
     seg_file = '/cis/home/dtward/Documents/ARA/Mouse_CCF/vtk/annotation_50.vtk';
     atlas_file = '/cis/home/dtward/Documents/ARA/Mouse_CCF/vtk/ara_nissl_50.vtk';
@@ -45,16 +45,9 @@ if nargin == 0
     output_dir = '719_test0/';
 
 
-    % try 787 with default parameters
-    % 787
-    input_dir = '/cis/home/dtward/Documents/intensity_transform_and_missing_data/csh_slices/MD787_tif/';
-    output_dir = '787_test0/';
-    config_file = 'nissl_config_787.ini';
-%     create_location_csv_rnaseq(input_dir, 14.72, 14.72, 10, 200,[])
-
     keyboard
 end
-detailed_output_dir = [output_dir(1:end-1),'_detailed/'];
+% detailed_output_dir = [output_dir(1:end-1),'_detailed/'];
 
 
 
