@@ -271,5 +271,7 @@ sliceView(xJ,yJ,zJ,AI)
 % end
 
 %%
+% keyboard
+% check there are no downs
 A = ThreeD_to_3D_affine_registration_GN(xI,yI,zI,I,xJ,yJ,zJ,Jnorm,A,downs/mindown,niter,0.25,model);
 save([detailed_output_dir 'initializer_A.mat'],'AJ','A');

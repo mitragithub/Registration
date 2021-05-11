@@ -133,6 +133,7 @@ dxJ0 = cellfun(@(x)str2num(x), csv_data(:,5:6));
 zJ0 = cellfun(@(x)str2num(x), csv_data(:,10));
 isthicks = cellfun(@(x) str2num(x), csv_data(:,7)) > thick_cutoff;
 % for now don't worry about offset, I'll just calculate it to be the center
+x0J = cellfun(@(x)str2num(x), csv_data(:,8:9));
 
 
 center = zeros(length(files),2);% this will be for centering my priors, if there is an initializer, it will get updated
@@ -190,6 +191,8 @@ if edit_mode
     end
 end
 
+%%
+% keyboard
 %%
 for downloop = 1 : 3
 %%    
@@ -310,8 +313,9 @@ for downloop = 1 : 3
     nxI = [size(I,2),size(I,1),size(I,3)];
     
     
+    climI = quantile(I(:),[0.001,0.999]);
     danfigure(1);
-    sliceView(xI,yI,zI,I);
+    sliceView(xI,yI,zI,I,5,climI);
     [XI,YI,ZI] = meshgrid(xI,yI,zI);
     fxI = (0:nxI(1)-1)/nxI(1)/dxI(1);
     fyI = (0:nxI(2)-1)/nxI(2)/dxI(2);
@@ -337,6 +341,9 @@ for downloop = 1 : 3
             if strcmp(config.DEFAULT.normalization,'normcdf')
                 % maybe I should detect padding as black pixels?
                 J{f} = normcdf(bsxfun(@minus,J{f}, mean(mean(J{f},1),2))/std(J{f}(:)));
+            elseif strcmp(config.DEFAULT.normalization,'power')
+                J{f} = J{f}.^str2double(config.DEFAULT.normalization_power);
+                
             end
         end
         
@@ -401,10 +408,18 @@ for downloop = 1 : 3
                 end
             end
         end
-        
-        tmp = [];
+        % build domain before downsampling and read offset
+        nxJ{f} = [size(J{f},2),size(J{f},1)];
+        xJ{f} = (0 : nxJ{f}(1)-1)*dxJ0(1) + x0J(f,1);
+        yJ{f} = (0 : nxJ{f}(2)-1)*dxJ0(2) + x0J(f,2);
         for c = 1 : size(J{f},3)
-            [~,~,tmp(:,:,c)] = downsample2D(1:size(J{f},2),1:size(J{f},1),J{f}(:,:,c),downJ*[1,1]);
+            if c == 1
+                [xJ{f},yJ{f},tmp_] = downsample2D(xJ{f},yJ{f},J{f}(:,:,c),downJ*[1,1]);
+                tmp = zeros(size(tmp_,1),size(tmp_,2),size(J{f},3));
+                tmp(:,:,1) = tmp_;
+            else
+                [~,~,tmp(:,:,c)] = downsample2D(1:size(J{f},2),1:size(J{f},1),J{f}(:,:,c),downJ*[1,1]);
+            end
         end
         J{f} = tmp;
         [~,~,WMask{f}] = downsample2D(1:size(WMask{f},2),1:size(WMask{f},1),WMask{f},downJ*[1,1]);
@@ -417,14 +432,19 @@ for downloop = 1 : 3
         end
         
         % domain for each image J
-        % TODO: support non zero centered, i.e. read from geometry file
+        % TODO: support non zero centered, i.e. read from geometry file and
+        % downsample appropriately
+        % if we have a half pixel offset in a fixed direction, that
+        % direction will become not-fixed after rigid positioning, and look
+        % like jitter
         % note that before jan 2021, all this data was 0 centered in
         % geometry file, so this would be no change
         nxJ{f} = [size(J{f},2),size(J{f},1)];
-        xJ{f} = (0 : nxJ{f}(1)-1)*dxJ(1);
-        yJ{f} = (0 : nxJ{f}(2)-1)*dxJ(2);
-        xJ{f} = xJ{f} - mean(xJ{f});
-        yJ{f} = yJ{f} - mean(yJ{f});
+        % note I"m updating xJ and yJ above
+        
+        
+        
+        
         [XJ{f},YJ{f}] = meshgrid(xJ{f},yJ{f});
         AJ(:,:,f) = eye(3); % affine matrix
         
@@ -802,9 +822,9 @@ for downloop = 1 : 3
         phiI_z = phi_I_x.*phiinvx_z + phi_I_y.*phiinvy_z + phi_I_z.*phiinvz_z;
         
         
-        
-        danfigure(333);
-        sliceView(xI,yI,zI,phiI)
+        % moved below only if saving frames
+%         danfigure(333);
+%         sliceView(xI,yI,zI,phiI,5,climI) % this call is a bit slow, I added clim
         
         if edit_mode
             phiL = zeros([size(phiI),nL]);
@@ -1408,60 +1428,60 @@ for downloop = 1 : 3
             if save_frames % only draw the figures if I'm gonna save them
                 danfigure(4559);
                 create_data = ~exist('herrAll','var') || length(herrAll) < f || ~isgraphics(herrAll(f));
-                if create_data
-                    subplotdan(ceil(sqrt(length(files))),ceil(sqrt(length(files))),f);
-                    herrAll(f) = imagesc(xJ{f},yJ{f},err{f}/2*3 + 0.5);
-                    % combine these axis image and off
-                    axis image off;
-                else
-                    set(herrAll(f),'cdata',err{f}/2*3 + 0.5);
-                end
+%                 if create_data
+%                     subplotdan(ceil(sqrt(length(files))),ceil(sqrt(length(files))),f);
+%                     herrAll(f) = imagesc(xJ{f},yJ{f},err{f}/2*3 + 0.5);
+%                     % combine these axis image and off
+%                     axis image off;
+%                 else
+%                     set(herrAll(f),'cdata',err{f}/2*3 + 0.5);
+%                 end
                 
-                danfigure(6666);
-                if create_data
-                    subplotdan(ceil(sqrt(length(files))),ceil(sqrt(length(files))),f);
-                    hJAll(f) = imagesc(xJ{f},yJ{f},J{f});
-                    % combine these axis image and off
-                    axis image off;
-                end
-                danfigure(6667);
-                if create_data
-                    subplotdan(ceil(sqrt(length(files))),ceil(sqrt(length(files))),f);
-                    hIAll(f) = imagesc(xJ{f},yJ{f},fSAphiI{f});
-                    % combine these axis image and off
-                    axis image off;
-                else
-                    set(hIAll(f),'cdata',fSAphiI{f});
-                end
+%                 danfigure(6666);
+%                 if create_data
+%                     subplotdan(ceil(sqrt(length(files))),ceil(sqrt(length(files))),f);
+%                     hJAll(f) = imagesc(xJ{f},yJ{f},J{f});
+%                     % combine these axis image and off
+%                     axis image off;
+%                 end
+%                 danfigure(6667);
+%                 if create_data
+%                     subplotdan(ceil(sqrt(length(files))),ceil(sqrt(length(files))),f);
+%                     hIAll(f) = imagesc(xJ{f},yJ{f},fSAphiI{f});
+%                     % combine these axis image and off
+%                     axis image off;
+%                 else
+%                     set(hIAll(f),'cdata',fSAphiI{f});
+%                 end
                 
                 
                 % weight for all
-                danfigure(4560);
-                if create_data
-                    subplotdan(ceil(sqrt(length(files))),ceil(sqrt(length(files))),f);
-                    hWeightAll(f) = imagesc(xJ{f},yJ{f},cat(3,WM{f}.*WMask{f},WA{f}.*WMask{f},WB{f}.*WMask{f}));
-                    axis image off;
-                else
-                    set(hWeightAll(f),'cdata',cat(3,WM{f}.*WMask{f},WA{f}.*WMask{f},WB{f}.*WMask{f}))
-                end
+%                 danfigure(4560);
+%                 if create_data
+%                     subplotdan(ceil(sqrt(length(files))),ceil(sqrt(length(files))),f);
+%                     hWeightAll(f) = imagesc(xJ{f},yJ{f},cat(3,WM{f}.*WMask{f},WA{f}.*WMask{f},WB{f}.*WMask{f}));
+%                     axis image off;
+%                 else
+%                     set(hWeightAll(f),'cdata',cat(3,WM{f}.*WMask{f},WA{f}.*WMask{f},WB{f}.*WMask{f}))
+%                 end
                 
                 % seg matching
-                danfigure(4561);
-                if edit_this_slice
-                    show = (SAphiL{f} - LJ{f})/2 + 0.5;
-                    if size(show,3) > 3
-                        show = show(:,:,1:3);
-                    elseif size(show,3) == 2
-                        show = cat(3,show,show(:,:,1));
-                    end
-                    if create_data
-                        subplotdan(ceil(sqrt(length(files))),ceil(sqrt(length(files))),f);                        
-                        hLabelAll(f) = imagesc(xJ{f},yJ{f},show,[0,1]);
-                        axis image off;
-                    else
-                        set(hLabelAll(f),'cdata',show)
-                    end
-                end
+%                 danfigure(4561);
+%                 if edit_this_slice
+%                     show = (SAphiL{f} - LJ{f})/2 + 0.5;
+%                     if size(show,3) > 3
+%                         show = show(:,:,1:3);
+%                     elseif size(show,3) == 2
+%                         show = cat(3,show,show(:,:,1));
+%                     end
+%                     if create_data
+%                         subplotdan(ceil(sqrt(length(files))),ceil(sqrt(length(files))),f);                        
+%                         hLabelAll(f) = imagesc(xJ{f},yJ{f},show,[0,1]);
+%                         axis image off;
+%                     else
+%                         set(hLabelAll(f),'cdata',show)
+%                     end
+%                 end
             end
             
             % one example figure that I can see
@@ -1877,11 +1897,17 @@ for downloop = 1 : 3
         subplot(2,2,3)
         plot([EMsave(1:it);ERsave(1:it);sum(ERJsave(:,1:it),1);Esave(1:it)]');
 
-        saveas(paramfig,[prefix 'energy.png'])
+        
         disp(['Iter: ' num2str(it) ', energy: ' num2str(E) ', matching energy: ' num2str(EM) ', reg energy: ' num2str(ER) ', regJ energy: ' num2str(sum(ERJ))] )
         
         %%
         if save_frames
+        saveas(paramfig,[prefix 'energy.png'])
+        
+        danfigure(333);
+        sliceView(xI,yI,zI,phiI,5,climI) % this call is a bit slow, I added clim
+
+        
         danfigure(323);
         sliceView(xI,yI,zI,gradI);
         
@@ -1928,16 +1954,16 @@ for downloop = 1 : 3
             frame2Gif(frameErr,[prefix 'error3d.gif']);
             framePhiI = [framePhiI,getframe(333)];
             frame2Gif(framePhiI,[prefix 'phiI.gif']);
-            frameErrAll = [frameErrAll,getframe(4559)];
-            frame2Gif(frameErrAll,[prefix 'errAll.gif']);
-            frameWeightAll = [frameWeightAll,getframe(4560)];
-            frame2Gif(frameWeightAll,[prefix 'weightAll.gif']);
-            frameIAll = [frameIAll, getframe(6667)];
-            frame2Gif(frameIAll,[prefix 'IAll.gif'])
-            if edit_mode
-                frameLabelAll = [frameLabelAll,getframe(4561)];
-                frame2Gif(frameLabelAll,[prefix 'LAll.gif'])
-            end
+%             frameErrAll = [frameErrAll,getframe(4559)];
+%             frame2Gif(frameErrAll,[prefix 'errAll.gif']);
+%             frameWeightAll = [frameWeightAll,getframe(4560)];
+%             frame2Gif(frameWeightAll,[prefix 'weightAll.gif']);
+%             frameIAll = [frameIAll, getframe(6667)];
+%             frame2Gif(frameIAll,[prefix 'IAll.gif'])
+%             if edit_mode
+%                 frameLabelAll = [frameLabelAll,getframe(4561)];
+%                 frame2Gif(frameLabelAll,[prefix 'LAll.gif'])
+%             end
         end
         
         

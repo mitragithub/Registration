@@ -58,9 +58,13 @@ if length(down)==1 && log(down)/log(2) == round(log(down)/log(2))
         %     x = x(1:2:end); % is this the right size? start with x(1) and add dx*nx...
         %     y = y(1:2:end);
         %     z = z(1:2:end);
-        x = (0 : nx(1)-1)*dx(1) + x(1);
-        y = (0 : nx(2)-1)*dx(2) + y(1);
-        z = (0 : nx(3)-1)*dx(3) + z(1);
+        
+%         x = (0 : nx(1)-1)*dx(1) + x(1);
+%         y = (0 : nx(2)-1)*dx(2) + y(1);
+%         z = (0 : nx(3)-1)*dx(3) + z(1);
+          x = 0.5*(x(1:2:nx(1)*2) + x(2:2:nx(1)*2));
+          y = 0.5*(y(1:2:nx(2)*2) + y(2:2:nx(2)*2));
+          z = 0.5*(z(1:2:nx(3)*2) + z(2:2:nx(3)*2));
     end
     
 else % general downsampling case

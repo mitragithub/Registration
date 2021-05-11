@@ -15,7 +15,7 @@ nFrames = length(frame);
 [nRow,nCol,nSlice] = size(frame(1).cdata);
 I = uint8(zeros(nRow,nCol*nFrames,nSlice));
 for j = 1 : length(frame)
-    I(:,(1:nCol) + nCol*(j-1),:) = frame(j).cdata;
+    I(:,(1:nCol) + nCol*(j-1),:) = imresize(frame(j).cdata,[nRow,nCol]);
 end
 [Iind,map] = rgb2ind(I,256);
 imwrite(reshape(Iind,nRow,nCol,1,nFrames),map,filename,'loopcount',Inf,'delaytime',delaytime);

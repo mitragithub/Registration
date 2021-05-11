@@ -144,15 +144,17 @@ for downloop = 1 : length(downs)
         % linear prediction
         COV = cov(AI(:),J(:));
         fAI = (AI - mean(AI(:)))/COV(1,1)*COV(1,2) + mean(J(:));
-        
+        danfigure(4);
+        sliceView(xJ,yJ,zJ,fAI)
+
         % error
         err = (fAI - J);
-        danfigure(4);
+        danfigure(5);
         sliceView(xJ,yJ,zJ,err)
         
         % cost
         E(itercount) = sum(abs(err(:)).^2)/2*prod(dxJ);
-        danfigure(5);
+        danfigure(6);
         plot(E(1:itercount))
         disp(['Down loop ' num2str(downloop) ', iteration '  num2str(it) ', energy ' num2str(E(itercount))])
         
@@ -187,6 +189,7 @@ for downloop = 1 : length(downs)
         A = inv(Ai);
         
         % other models
+        
         if model > 0
             [U,S,V] = svd(A(1:3,1:3));
             if model == 1 % rigid
@@ -196,8 +199,9 @@ for downloop = 1 : length(downs)
                 A(1:3,1:3) = U * diag([1,1,1]*meanS) * V';
             end
         end
+        Ai = inv(A); % for the last time
         
-
+        disp(svd(A(1:3,1:3)))
         drawnow;
         
     end % end of gradient descent iteration loop it

@@ -4,5 +4,8 @@
 *.jpeg
 *.tif
 *.tiff
-
+*.fig
+*.vtk
+*.eps
+*.geojson
 *~

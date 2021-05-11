@@ -218,12 +218,16 @@ for downcount = 1 : length(downs)
         
         % build some weights to avoid boundary effects
         try
+            if contains(target_dir,'DK39') % don't use boundary weights here
+                asdf
+            end
             n_boundary = round(min([size(J{i},1),size(J{i},2)])*0.25); % about 20 percent boundary  
             tmp = build_boundary_weight([size(J{i},1),size(J{i},2)],n_boundary);
-            W{i} = W{i}.*tmp;
+            W{i} = W{i}.*tmp;            
         catch
             W{i} = W{i}.*ones([size(J{i},1),size(J{i},2)]);
         end
+        
         
         % maybe contrast normalization will be useful
         if contains(target_dir,'human')
@@ -428,7 +432,7 @@ for downcount = 1 : length(downs)
             title(['down ' num2str(down) ', iter ' num2str(it)])
 
             % human dataset, produce output
-            if contains(target_dir,'human')
+%             if contains(target_dir,'human')
                 if it == 1 && downcount == 1
                     frame0 = [];
                     frame1 = [];
@@ -437,7 +441,7 @@ for downcount = 1 : length(downs)
                 frame1 = [frame1,getframe(100)];
                 frame2Gif(frame0,[output_dir 'slice_average.gif'])
                 frame2Gif(frame1,[output_dir 'slice_align.gif'])
-            end
+%             end
 
             drawnow;
         end
@@ -453,7 +457,7 @@ if ~exist(output_dir,'dir')
 end
 save([output_dir 'initializer_A.mat'],'AJ');
 
-if contains(target_dir,'human')
+% if contains(target_dir,'human')
     
     
     % write out volume    
@@ -479,13 +483,14 @@ if contains(target_dir,'human')
     avw.hdr.dime.dtype = 16;
     avw.hdr.dime.bitpix = 8;
     avw.hdr.dime.dtype = 2;
-    avw.img = uint8(I0*255);
+    mymax = quantile(I0(:),0.99);
+    avw.img = uint8(I0/mymax*255);
     avw_img_write(avw,[output_dir 'slice_recon.img'])
-    avw.img = uint8(I*255);
+    avw.img = uint8(I/mymax*255);
     avw_img_write(avw,[output_dir 'slice_average.img'])
-    avw.img = uint8(W0*255);
+    avw.img = uint8(W0/max(W0(:))*255);
     avw_img_write(avw,[output_dir 'slice_weights.img'])
-end
+% end
 % keyboard
 return
 keyboard

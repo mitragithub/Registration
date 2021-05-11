@@ -87,7 +87,16 @@ end
 if isfield(OPT,'sigmaA')
     sigmaA = OPT.sigmaA;
 end
+nonrigid = 0;
+if isfield(OPT,'nonrigid')
+    nonrigid = OPT.nonrigid;
+end
 
+% optionally draw
+draw = 1;
+if isfield(OPT,'draw')
+    draw = OPT.draw;
+end
 
 addpath Functions/plotting
 addpath Functions/gradient
@@ -98,13 +107,17 @@ addpath Functions/downsample
 qlim = [0.01,0.99];
 climI = quantile(I(:),qlim);
 climJ = quantile(J(:),qlim);
+if draw
 danfigure(1);
-imagesc(xI,yI,I)
+cshowI = min(size(I,3),3);
+imagesc(xI,yI,I(:,:,1:cshowI))
 axis image
 
 danfigure(2);
-imagesc(xJ,yJ,(J-climJ(1))/diff(climJ))
+cshowJ = min(size(J,3),3);
+imagesc(xJ,yJ,(J(:,:,cshowJ)-climJ(1))/diff(climJ))
 axis image
+end
 
 CI = size(I,3);
 CJ = size(J,3);
@@ -133,6 +146,9 @@ end
 
 muA = cat(3,1,1,1);
 order = 3; % only support order 1,2,3 for polynomial contrast transform
+if isfield(OPT,'order')
+    order = OPT.order;
+end
 if nocontrast
     order = 1;
 end
@@ -154,9 +170,11 @@ end
 
 
 %%
+
 A = A0;
 Ai = inv(A);
 ndraw = 21;
+
 for downloop = 1 : length(downs)
     d = downs(downloop);
 
@@ -167,15 +185,17 @@ for downloop = 1 : length(downs)
         [~,~,Id(:,:,c)] = downsample2D(1:size(I,2),1:size(I,1),I(:,:,c),[1,1]*d);
     end
     dxId = dxI*d;
-    xId = (1 : size(Id,2))*dxId(1); xId = xId - mean(xId);
-    yId = (1 : size(Id,1))*dxId(2); yId = yId - mean(yId);
+%     xId = (1 : size(Id,2))*dxId(1); xId = xId - mean(xId);
+%     yId = (1 : size(Id,1))*dxId(2); yId = yId - mean(yId);
+    [xId,yId,~] = downsample2D(xI,yI,I(:,:,c),[1,1]*d);
     Jd = [];
     for c = 1 : CJ
         [~,~,Jd(:,:,c)] = downsample2D(1:size(J,2),1:size(J,1),J(:,:,c),[1,1]*d);
     end
     dxJd = dxJ*d;
-    xJd = (1 : size(Jd,2))*dxJd(1); xJd = xJd - mean(xJd);
-    yJd = (1 : size(Jd,1))*dxJd(2); yJd = yJd - mean(yJd);
+%     xJd = (1 : size(Jd,2))*dxJd(1); xJd = xJd - mean(xJd);
+%     yJd = (1 : size(Jd,1))*dxJd(2); yJd = yJd - mean(yJd);
+    [xJd,yJd,~] = downsample2D(xJ,yJ,J(:,:,c),[1,1]*d);
     
     WM = ones(size(Jd(:,:,1)))*0.9;
     WA = ones(size(Jd(:,:,1)))*0.1;
@@ -257,28 +277,30 @@ for downloop = 1 : length(downs)
         end
         
         
+        
         if ~mod(it-1,ndraw) || it == niter(downloop)
+            if draw
             danfigure(1);
-        imagesc(xId,yId,Id)
+        imagesc(xId,yId,Id(:,:,1:cshowI))
         axis image
         title('I')
         
         danfigure(2);
-        imagesc(xJd,yJd,(Jd-climJ(1))/diff(climJ))
+        imagesc(xJd,yJd,(Jd(:,:,1:cshowJ)-climJ(1))/diff(climJ))
         axis image
         title('J')
         
         danfigure(3);
-        imagesc(xJd,yJd,AId);
+        imagesc(xJd,yJd,AId(:,:,1:cshowI));
         axis image
         title('AI')
         
         danfigure(4);
-        imagesc(xJd,yJd,(fAId-climJ(1))/diff(climJ));
+        imagesc(xJd,yJd,(fAId(:,:,1:cshowJ)-climJ(1))/diff(climJ));
         axis image
         title('fAI')
         danfigure(5);
-        imagesc(xJd,yJd,err/2.0/diff(climJ) + 0.5)
+        imagesc(xJd,yJd,err(:,:,1:cshowJ)/2.0/diff(climJ) + 0.5)
         axis image
         title('err')
         
@@ -289,7 +311,7 @@ for downloop = 1 : length(downs)
         title('mask')
         
         
-        
+        end
         disp(['Iteration ' num2str(it) '/' num2str(niter(downloop)) ', energy ' num2str(E)]);
         
         end
@@ -328,11 +350,15 @@ for downloop = 1 : length(downs)
         Ai(1:2,1:3) = Ai(1:2,1:3) - e * step;
         
         % make it rigid
+        if ~nonrigid
         [U,S,V] = svd(Ai(1:2,1:2));
         Ai(1:2,1:2) = U*V';
+        end
         A = inv(Ai);
         
+        if draw
         drawnow
+        end
         
         
     end % of iter

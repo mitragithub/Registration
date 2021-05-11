@@ -9,8 +9,10 @@ dx = [x(2)-x(1),y(2)-y(1)];
 nx = [size(I,2),size(I,1)];
 
 if length(down)==1 && log(down)/log(2) == round(log(down)/log(2))
-    
+    nxd = nx;
     for d = 1 : log(down)/log(2)
+        nxd = floor(nxd./2);
+
         % downsample
         if mod(size(I,1),2)
             I = cat(1,I,I(end,:,:));
@@ -26,8 +28,11 @@ if length(down)==1 && log(down)/log(2) == round(log(down)/log(2))
         dx = dx*2;
         nx = [size(I,2),size(I,1)];
         
-        x = (0 : nx(1)-1)*dx(1) + x(1);
-        y = (0 : nx(2)-1)*dx(2) + y(1);
+%         x = (0 : nx(1)-1)*dx(1) + x(1);
+%         y = (0 : nx(2)-1)*dx(2) + y(1);
+        x = 0.5*(x(1:2:nxd(1)*2) + x(2:2:nxd(1)*2));
+        y = 0.5*(y(1:2:ndx(2)*2) + y(2:2:ndx(2)*2));
+        
     end
     
 else
