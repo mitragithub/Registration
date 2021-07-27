@@ -123,6 +123,14 @@ if exist([output_dir 'initializer_A.mat'],'file') && load_initializer
     
     tx = squeeze(AJ(1,3,:))';
     ty = squeeze(AJ(2,3,:))';   
+elseif contains(target_dir,'MD816_STIF')% special case for mouse whole brain mouse with tissue
+    for i = 1 : size(AJ,3)
+        AJ(:,:,i) = eye(3);
+        if i <= 177 % slice 186
+            disp(files{i});
+            AJ(2,end,i) = AJ(2,end,i) - 2500; % okay this looks good
+        end
+    end
 else
     for i = 1 : size(AJ,3)
         AJ(:,:,i) = eye(3);
@@ -290,7 +298,8 @@ for downcount = 1 : length(downs)
             tmp(isnan(tmp)) = 0;
             W0(:,:,i) = tmp;
         end
-
+        
+%         sliceView(xI,yI,zI,I0,nplot+5) % for testing initialization
     
     
         % first pad the image, and get a weighted average
