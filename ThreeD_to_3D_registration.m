@@ -17,6 +17,7 @@ function [phiiAix,phiiAiy,phiiAiz,Aphix,Aphiy,Aphiz,A,vtx,vty,vtz] = ThreeD_to_3
 addpath Functions/downsample
 addpath Functions/plotting
 addpath Functions/gradient
+addpath Functions/mutual_information_cost
 if nargin == 0
     addpath Functions/vtk
     
@@ -69,6 +70,26 @@ end
 velocity_GN = 0;
 if isfield(OPT,'velocity_GN')
     velocity_GN = OPT.velocity_GN;
+end
+if isfield(OPT,'MI')
+    MI = OPT.MI;
+else
+    MI = 0;
+end
+if isfield(OPT,'preconditioner')
+    preconditioner = OPT.preconditioner;
+else
+    preconditioner = 1;
+end
+if isfield(OPT,'fAphiIgif')
+    fAphiIgif = 1;
+else
+    fAphiIgif = 0;
+end
+if isfield(OPT,'errgif')
+    errgif = 1;
+else
+    errgif = 0;
 end
 
 if length(niter) == 1
@@ -179,8 +200,12 @@ for downloop = 1 : length(downs)
     K = 1.0./LL;
     % Kp for preconditioner
     ap = sqrt(sum(dxI.^2))*apfactor;
-    LLp = ( 1.0 - (ap)^2*2*( (cos(2.0*pi*FXI*dxI(1))-1.0)/dxI(1)^2 + (cos(2.0*pi*FYI*dxI(2))-1.0)/dxI(2)^2 + (cos(2.0*pi*FZI*dxI(3))-1.0)/dxI(3)^2  ) ).^(2*p);
-    Kp = LL./LLp;
+    LLp = ( 1.0 - (ap)^2*2*( (cos(2.0*pi*FXI*dxI(1))-1.0)/dxI(1)^2 + (cos(2.0*pi*FYI*dxI(2))-1.0)/dxI(2)^2 + (cos(2.0*pi*FZI*dxI(3))-1.0)/dxI(3)^2  ) ).^(2*p);    
+    if preconditioner == 1 % old method, default
+        Kp = LL./LLp; % I don't usually put this LL in the preconditioner, this totally cancels out the original scale and makes updates on the smooth scale. not sure if its a good idea
+    elseif preconditioner == 0
+        Kp = 1.0/LLp;
+    end
 
     % vmax should be half a voxel
     Vmax = sqrt(sum(dxI.^2))*0.5*100;
@@ -243,33 +268,62 @@ for downloop = 1 : length(downs)
         danfigure(3);
         sliceView(xJ,yJ,zJ,AphiI,nplot,climI)
         
-%         % linear prediction
-%         COV = cov(AphiI(:),J(:));
-%         fAI = (AphiI - mean(AphiI(:)))/COV(1,1)*COV(1,2) + mean(J(:));
-        
-        % polynomial prediction
-        % basis
-        B = ones(numel(J),order + 1);
-        DB = zeros(numel(J),order + 1); DB(:,2) = 1;
-        for o = 2 : order + 1
-            B(:,o) = AphiI(:).^(o-1);
-            if o > 2
-                DB(:,o) = (o-1) * AphiI(:).^(o-2);
+        if MI
+            fAphiI = AphiI;
+        else
+    %         % linear prediction
+    %         COV = cov(AphiI(:),J(:));
+    %         fAI = (AphiI - mean(AphiI(:)))/COV(1,1)*COV(1,2) + mean(J(:));
+
+            % polynomial prediction
+            % basis
+            B = ones(numel(J),order + 1);
+            DB = zeros(numel(J),order + 1); DB(:,2) = 1;
+            for o = 2 : order + 1
+                B(:,o) = AphiI(:).^(o-1);
+                if o > 2
+                    DB(:,o) = (o-1) * AphiI(:).^(o-2);
+                end
             end
+            % find coefficients
+            coeffs = (B'*B)\(B' * J(:));
+            fAphiI = reshape(B * coeffs,size(J));
         end
-        % find coefficients
-        coeffs = (B'*B)\(B' * J(:));
-        fAphiI = reshape(B * coeffs,size(J));
         danfigure(4);
         sliceView(xJ,yJ,zJ,fAphiI,nplot,climJ)
+        if fAphiIgif
+            frame = getframe(4);
+            if it == 1 && downloop == 1
+                imwrite( permute(frame.cdata,[1,2,4,3]),'fAphiIout.gif','delaytime',0,'loopcount',Inf)
+            else
+                imwrite( permute(frame.cdata,[1,2,4,3]),'fAphiIout.gif','writemode','append','delaytime',0)
+            end
+        end
         
         % error
-        err = (fAphiI - J);
-        danfigure(5);
-        sliceView(xJ,yJ,zJ,err,nplot,[-1,1]*max(abs(climJ)));
-        
+        if MI                
+            [mi,migrad] = calc_mi_kernel(fAphiI,J,linspace(-5,5,21),0.5);
+            err = -migrad;
+            danfigure(5);
+            sliceView(xJ,yJ,zJ,err,nplot);
+        else
+            err = (fAphiI - J);
+            danfigure(5);
+            sliceView(xJ,yJ,zJ,err,nplot,[-1,1]*max(abs(climJ)));
+        end
+        if errgif
+            frame = getframe(5);
+            if it == 1 && downloop == 1
+                imwrite( permute(frame.cdata,[1,2,4,3]),'errout.gif','delaytime',0,'loopcount',Inf)
+            else
+                imwrite( permute(frame.cdata,[1,2,4,3]),'errout.gif','writemode','append','delaytime',0)
+            end
+        end
         % cost
         EM(itercount) = sum(abs(err(:)).^2.*WM(:))/2*prod(dxJ);
+        if MI
+            EM(itercount) = -mi;
+        end
         ER(itercount) = sum(sum(sum(sum( bsxfun(@times, (abs(vtxhat).^2 + abs(vtyhat).^2 + abs(vtzhat).^2) ,  LL ) ))))*prod(dxI)*dt/numel(vtx(:,:,:,1))/sigmaR^2/2;
         E(itercount) = EM(itercount) + ER(itercount);
         danfigure(6);
@@ -278,7 +332,7 @@ for downloop = 1 : length(downs)
         plot(EM(1:itercount))
         plot(E(1:itercount))
         hold off;
-        disp(['Down loop ' num2str(downloop) ', iteration '  num2str(it) ', energy ' num2str(E(itercount)) ' (match ' num2str(EM(itercount)) ', reg ' num2str(ER(itercount)) ')'])
+        disp(['Down loop ' num2str(downloop) ', iteration '  num2str(it) ', energy ' num2str(E(itercount)) ' (match ' num2str(EM(itercount)) ', reg ' num2str(ER(itercount)) '), max v ' num2str(max(sqrt(vtx(:).^2 + vty(:).^2 + vtz(:).^2)))])
         
         
         
@@ -296,6 +350,12 @@ for downloop = 1 : length(downs)
             danfigure(7);
             sliceView(xJ,yJ,zJ,cat(4,WM,WA,WB),nplot,[0,1]);
 
+            if MI
+            WM = 0.99;
+            WB = 0.005;
+            WA = 0.005;
+            end
+        
         end
         
         % now we take gradient
@@ -329,9 +389,12 @@ for downloop = 1 : length(downs)
         
         
         
-        
         % get the error to pull back
-        errDf = err.*WM .* reshape(DB*coeffs,size(err));
+        if MI
+            errDf = err;
+        else
+            errDf = err.*WM .* reshape(DB*coeffs,size(err))/sigmaM.^2;
+        end
         errDfp = zeros(size(errDf)+2);
         errDfp(2:end-1,2:end-1,2:end-1) = errDf;
         if velocity_GN
@@ -375,7 +438,7 @@ for downloop = 1 : length(downs)
             
             % pull back error
             F = griddedInterpolant({yJp,xJp,zJp},errDfp,'linear','nearest');
-            lambda = F(Aphiy,Aphix,Aphiz).*detjac.*(-1*det(A)/sigmaM.^2);
+            lambda = F(Aphiy,Aphix,Aphiz).*detjac.*(-1*det(A));
             
             % multiply by gradient
             [I_x,I_y,I_z] = gradient3d(It(:,:,:,t),dxI(1),dxI(2),dxI(3));
