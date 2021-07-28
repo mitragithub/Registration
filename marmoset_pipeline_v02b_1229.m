@@ -1778,6 +1778,7 @@ for native = [0] % if native = 1, don't apply rigid
                     
                     % write out AiJ
                     [a,b,c] = fileparts(slice_filenames{f});
+                    AiJ(isnan(AiJ)) = 0;
                     write_vtk_image(xg,yg,[zJ(f),zJ(f)+dzJ(f)],AiJ,[ output_dir b '.vtk'],thisname);
                     
                     % and write out the transform
@@ -1839,6 +1840,7 @@ for native = [0] % if native = 1, don't apply rigid
 
                 % write out I and J as vtk files
                 [a,b,c] = fileparts(slice_filenames{f});
+                I_(isnan(I_)) = 0;
                 write_vtk_image(xg,yg,[zJ(f),zJ(f)+dzJ(f)],I_,[output_dir thisname '_to_' b '.vtk'],thisname);
                 
                 
@@ -2291,6 +2293,7 @@ for d0 = 1:length(data_3D_files)
             
             % write out the image
             outname = [prefix_outdir_  thisname '_to_' data_3D_spaces{d0}  '.vtk'];
+            TJ(isnan(TJ)) = 0;
             write_vtk_image(xI,yI,zI,TJ,outname,[thisname '_to_' data_3D_spaces{d0}])
 
             
@@ -2417,6 +2420,7 @@ for d0 = 1:length(data_3D_files)
 
         % now I should write out the image
         outname = [prefix_outdir_  thisname '_to_' data_3D_spaces{d0}  '.vtk'];
+        J3D_(isnan(J3D_)) = 0;
         write_vtk_image(xI,yI,zI,J3D_,outname,[thisname '_to_' data_3D_spaces{d0}])
         saveas(556,[outname(1:end-4) '.png'])
         
