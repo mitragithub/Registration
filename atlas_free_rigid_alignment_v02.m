@@ -466,7 +466,7 @@ if ~exist(output_dir,'dir')
 end
 save([output_dir 'initializer_A.mat'],'AJ');
 
-% if contains(target_dir,'human')
+if 0%contains(target_dir,'human')
     
     
     % write out volume    
@@ -499,7 +499,7 @@ save([output_dir 'initializer_A.mat'],'AJ');
     avw_img_write(avw,[output_dir 'slice_average.img'])
     avw.img = uint8(W0/max(W0(:))*255);
     avw_img_write(avw,[output_dir 'slice_weights.img'])
-% end
+end
 % keyboard
 return
 keyboard

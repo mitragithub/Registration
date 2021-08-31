@@ -48,6 +48,7 @@ if nargin < 1
     filename = 'test.vtk';
 end
 
+VERBOSE = 0;
 
 fid = fopen(filename,'rb');
 
@@ -58,7 +59,7 @@ header = fgetl(fid);
 if isempty(header) % skip any blank
     continue
 end
-disp(header)
+if VERBOSE;disp(header);end
 break;
 end
 
@@ -70,7 +71,7 @@ if isempty(title_) % skip any blankm2html
     
     continue
 end
-disp(title_)
+if VERBOSE;disp(title_);end
 break;
 end
 
@@ -80,7 +81,7 @@ binary = fgetl(fid);
 if isempty(binary) % skip any blank
     continue
 end
-disp(binary)
+if VERBOSE;disp(binary);end
 break;
 end
 if ~strcmp(binary,'BINARY')
@@ -97,7 +98,7 @@ break;
 end
 [~,dataset] = strtok(dataset,' ');
 dataset = dataset(2:end);
-disp(dataset)
+if VERBOSE;disp(dataset);end
 if ~strcmp(dataset,'STRUCTURED_POINTS')
     error(['Only support STRUCTURED_POINTS dataset, but dataset is ' dataset])
 end
@@ -114,7 +115,7 @@ end
 [~,dimensions] = strtok(dimensions,' ');
 dimensions = dimensions(2:end);
 dimensions = sscanf(dimensions,'%d')';
-disp('dimensions');disp(dimensions)
+if VERBOSE;disp('dimensions');disp(dimensions);end
 if length(dimensions) ~= 3
     error(['Only support 3D data, but dataset dimensions is ' num2str(dimensions)])
 end
@@ -130,7 +131,7 @@ end
 [~,origin] = strtok(origin,' ');
 origin = origin(2:end);
 origin = sscanf(origin,'%f')';
-disp('origin');disp(origin)
+if VERBOSE;disp('origin');disp(origin);end
 if length(origin) ~= 3
     error(['Only support 3D data, but dataset origin is ' num2str(origin)])
 end
@@ -146,7 +147,7 @@ end
 [~,spacing] = strtok(spacing,' ');
 spacing = spacing(2:end);
 spacing = sscanf(spacing,'%f')';
-disp('spacing');disp(spacing)
+if VERBOSE;disp('spacing');disp(spacing);end
 if length(spacing) ~= 3
     error(['Only support 3D data, but dataset spacing is ' num2str(spacing)])
 end
@@ -165,7 +166,7 @@ if isempty(pointdata) % skip any blank
 end
 break;
 end
-disp(pointdata)
+if VERBOSE;disp(pointdata);end
 POINT_DATA = 'POINT_DATA';
 if ~strcmp(pointdata(1:length(POINT_DATA)), POINT_DATA)
     error(['Only support POINT_DATA, but found ' pointdata]);
@@ -173,7 +174,7 @@ end
 [~,pointdata] = strtok(pointdata,' ');
 pointdata = pointdata(2:end);
 n_datapoints = sscanf(pointdata,'%d')';
-disp(['Number of datapoints ' num2str(n_datapoints)])
+if VERBOSE;disp(['Number of datapoints ' num2str(n_datapoints)]);end
 if prod(dimensions) ~= n_datapoints
     error(['Product of dimensions should equal number of datapoints, but they are ' num2str(prod(dimensions)) ' and ' num2str(n_datapoints)])
 end
@@ -195,18 +196,15 @@ while 1
     end
     [TYPE,R] = strtok(line, ' ');
     R = R(2:end);
-    disp('image type')
-    disp(TYPE)
+    if VERBOSE;disp('image type');disp(TYPE);end
     
     
     [names{end+1},R] = strtok(R,' ');
     R = R(2:end);
-    disp('name')
-    disp(names{end})
+    if VERBOSE;disp('name');disp(names{end});end
     
     [dtype,R] = strtok(R,' ');
-    disp('dtype')
-    disp(dtype)
+    if VERBOSE;disp('dtype');disp(dtype);end
     % we should do a conversoin
     dtype_matlab = 'uint8'; % default
     if strcmp(dtype,'unsigned_short')
@@ -225,8 +223,7 @@ while 1
     else
         channels{end+1} = 1;
     end
-    disp('channels')
-    disp(channels{end})
+    if VERBOSE;disp('channels');disp(channels{end});end
     if channels{end} ~= 1
         error('only single channel images supported')
     end

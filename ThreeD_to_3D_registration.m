@@ -95,6 +95,9 @@ end
 if length(niter) == 1
     niter = ones(size(downs))*niter;
 end
+if length(eV) == 1
+    eV = ones(size(downs))*eV;
+end
 
 
 I = (I - mean(I(:))) / std(I(:));
@@ -454,9 +457,9 @@ for downloop = 1 : length(downs)
             squash = 1;
             if squash
             % update
-            stepx = eV*down*grad_x;
-            stepy = eV*down*grad_y;
-            stepz = eV*down*grad_z;
+            stepx = eV(downloop)*down*grad_x;
+            stepy = eV(downloop)*down*grad_y;
+            stepz = eV(downloop)*down*grad_z;
             
             % squash it            
             normstep = sqrt(stepx.^2 + stepy.^2 + stepz.^2);
@@ -499,9 +502,9 @@ for downloop = 1 : length(downs)
                 grad_y = grad_y - grad_y_;
                 grad_z = grad_z - grad_z_;
                 % update
-                vtx(:,:,:,t) = vtx(:,:,:,t) - grad_x*eV;
-                vty(:,:,:,t) = vty(:,:,:,t) - grad_y*eV;
-                vtz(:,:,:,t) = vtz(:,:,:,t) - grad_z*eV;
+                vtx(:,:,:,t) = vtx(:,:,:,t) - grad_x*eV(downloop);
+                vty(:,:,:,t) = vty(:,:,:,t) - grad_y*eV(downloop);
+                vtz(:,:,:,t) = vtz(:,:,:,t) - grad_z*eV(downloop);
 
             end
                         

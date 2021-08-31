@@ -64,6 +64,14 @@
 % TODO: try to use the atlas nissl as the mapping one instead of the atlas
 % mri
 % the labels don't align that well.
+%
+% Note, ricardo is using the 1229 marmoset
+% register the T2 image with the template
+% he is using bma-1-mri-reorient.vtk
+% note, put outputs here in the fugure on csh /nfs/data/main/M32/RegistrationData/Data_Daniel
+% make sure all outputs go to dropbox, but for speed everything can go
+%
+% for progress report talk about fmost, rnaseq, and stp
 
 addpath Functions/plotting
 addpath Functions/downsample
@@ -208,6 +216,8 @@ mapping_3D_options = {
 preprocessing_3D_options = {
     {
         struct('name','flip_contrast','which','target','lower_threshold',20,'upper_threshold','none'),
+%         struct('name','erode','which','target','r',1),
+%         struct('name','dilate','which','target','r',1),
 %         struct('name','power','which','target','power',0.5),
         struct('name','resample_isotropic'),
 %         struct('name','bias_correct','which','atlas','scale',1500,'n',4), % was 2 by default, was 2000
@@ -352,6 +362,69 @@ for m = 1 : size(mapping_3D_pairs,1)
                 
                 
             end
+            % asdf
+            % for ricardo write out this transformed image
+%             write_vtk_image(xJ,yJ,zJ,J,[atlas_fname(1:end-4) '-contrast.vtk'],[titleI '_contrast'])
+%             asdf
+        elseif strcmp(name,'erode')
+            radius = opts.r;
+            for a = [0,1]
+                if a == 0 && (strcmpi(opts.which,'atlas') || strcmpi(opts.which,'both'))
+                    im = I;
+                elseif a == 1 && (strcmpi(opts.which,'target') || strcmpi(opts.which,'both'))
+                    im = J;
+                else
+                    continue
+                end                                
+
+                for row = [-radius : radius]
+                    for col = [-radius : radius]
+                        for slice = [-radius : radius]    
+                            if row^2 + col^2 + slice^2 > radius^2
+                                continue
+                            end
+                            im = min(im,circshift(J,[row,col,slice]));
+                        end
+                    end
+                end
+                
+                if a == 0 && (strcmpi(opts.which,'atlas') || strcmpi(opts.which,'both'))
+                    I = im;
+                elseif a == 1 && (strcmpi(opts.which,'target') || strcmpi(opts.which,'both'))
+                    J = im;
+                end
+
+            end
+        elseif strcmp(name,'dilate')
+            radius = opts.r;
+            for a = [0,1]
+                if a == 0 && (strcmpi(opts.which,'atlas') || strcmpi(opts.which,'both'))
+                    im = I;
+                elseif a == 1 && (strcmpi(opts.which,'target') || strcmpi(opts.which,'both'))
+                    im = J;
+                else
+                    continue
+                end                                
+
+                for row = [-radius : radius]
+                    for col = [-radius : radius]
+                        for slice = [-radius : radius]    
+                            if row^2 + col^2 + slice^2 > radius^2
+                                continue
+                            end
+                            im = max(im,circshift(J,[row,col,slice]));
+                        end
+                    end
+                end
+                
+                if a == 0 && (strcmpi(opts.which,'atlas') || strcmpi(opts.which,'both'))
+                    I = im;
+                elseif a == 1 && (strcmpi(opts.which,'target') || strcmpi(opts.which,'both'))
+                    J = im;
+                end
+
+            end            
+            
         elseif strcmpi(name,'bias_correct')
             disp('Bias correct')
             prefix_outdir = [out_dir 'preprocessing_' num2str(p,'%03d') '_bias_correct/'];
@@ -369,6 +442,8 @@ for m = 1 : size(mapping_3D_pairs,1)
                     x = xJ;
                     y = yJ;
                     z = zJ;
+                else
+                    continue
                 end
                 opt_ = struct;
                 if ~isfield(opts,'n')
